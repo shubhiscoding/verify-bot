@@ -59,9 +59,8 @@ export default function VerifyContent() {
         setError("Required token not found in wallet.");
       }
     }
-    //@ts-ignore 
-    catch (err: any) {
-      setError(err.message || "Error fetching token balance");
+    catch (err) {
+      setError("Error fetching token balance");
     } finally {
       isFetchingRef.current = false;
       setLoading(false);
@@ -94,9 +93,8 @@ export default function VerifyContent() {
 
       setVerificationResult(result);
     } 
-    //@ts-ignore
-    catch (err: any) {
-      setError(err.message || "Verification error");
+    catch (err) {
+      setError( "Verification error");
       setVerificationResult(null);
     } finally {
       setVerifying(false);
