@@ -39,7 +39,7 @@ export default function VerifyContent() {
       setLoading(true);
       setError(null);
 
-      let accounts = await connection.getParsedTokenAccountsByOwner(publicKey, {
+      const accounts = await connection.getParsedTokenAccountsByOwner(publicKey, {
         programId: TOKEN_PROGRAM_ID,
       });
 
@@ -58,7 +58,9 @@ export default function VerifyContent() {
         setTokenBalance(null);
         setError("Required token not found in wallet.");
       }
-    } catch (err: any) {
+    }
+    //@ts-ignore 
+    catch (err: any) {
       setError(err.message || "Error fetching token balance");
     } finally {
       isFetchingRef.current = false;
@@ -91,7 +93,9 @@ export default function VerifyContent() {
       if (!response.ok) throw new Error(result.message || "Verification failed");
 
       setVerificationResult(result);
-    } catch (err: any) {
+    } 
+    //@ts-ignore
+    catch (err: any) {
       setError(err.message || "Verification error");
       setVerificationResult(null);
     } finally {
