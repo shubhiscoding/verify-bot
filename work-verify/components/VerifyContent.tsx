@@ -60,6 +60,7 @@ export default function VerifyContent() {
       }
     }
     catch (err) {
+      console.error(err)
       setError("Error fetching token balance");
     } finally {
       isFetchingRef.current = false;
@@ -94,7 +95,8 @@ export default function VerifyContent() {
       setVerificationResult(result);
     } 
     catch (err) {
-      setError( "Verification error");
+      console.error(err);
+      setError("Verification error");
       setVerificationResult(null);
     } finally {
       setVerifying(false);
