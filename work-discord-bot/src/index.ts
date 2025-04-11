@@ -19,6 +19,7 @@ import dotenv from 'dotenv';
 import { createClient } from '@supabase/supabase-js';
 import { Connection, PublicKey } from '@solana/web3.js';
 import { TOKEN_PROGRAM_ID } from '@solana/spl-token';
+import * as nacl from 'tweetnacl'; // Import nacl for signature verification
 
 dotenv.config();
 
@@ -64,7 +65,7 @@ app.use(cors());
 app.use(express.json());
 
 const PORT = process.env.PORT || 3001;
-const CLIENT_URL = process.env.CLIENT_URL !;
+const CLIENT_URL = process.env.CLIENT_URL!;
 
 // Function to check token balance for a wallet
 async function checkTokenBalance(walletAddress: string): Promise<number> {
@@ -205,10 +206,6 @@ async function handleCommandInteraction(interaction: CommandInteraction) {
     
     if (!existingUser) {
       // New user - only show connect wallet button
-      const verificationCode = crypto.randomBytes(20).toString('hex');
-      pendingVerifications.set(verificationCode, { userId: interaction.user.id, action: 'new' });
-      const verificationLink = `${CLIENT_URL}/?code=${verificationCode}`;
-      
       row.addComponents(
         new ButtonBuilder()
           .setLabel('Connect Wallet')
@@ -233,16 +230,56 @@ async function handleCommandInteraction(interaction: CommandInteraction) {
   }
 }
 
-//@ts-ignore
-app.post('/api/verify-wallet', async (req, res ) => {
+// Helper function to verify a wallet signature
+function verifySignature(message: string, signature: string, walletAddress: string): boolean {
   try {
-    const { verificationCode, walletAddress, tokenBalance } = req.body;
+    // Convert signature from base64 string to Uint8Array
+    const signatureBytes = Buffer.from(signature, 'base64');
+    
+    // Convert wallet address string to PublicKey
+    const publicKey = new PublicKey(walletAddress);
+    
+    // Convert message to Uint8Array
+    const messageBytes = new TextEncoder().encode(message);
+    
+    // Verify signature
+    return nacl.sign.detached.verify(
+      messageBytes,
+      signatureBytes,
+      publicKey.toBytes()
+    );
+  } catch (error) {
+    console.error('Error verifying signature:', error);
+    return false;
+  }
+}
+//@ts-ignore
+app.post('/api/verify-wallet', async (req: Request, res: Response) => {
+  try {
+    const { verificationCode, walletAddress, tokenBalance, signature, message } = req.body;
     
     // Validate request
     if (!verificationCode || !walletAddress || tokenBalance === undefined) {
       return res.status(400).json({ 
         success: false, 
         message: 'Missing required fields' 
+      });
+    }
+    
+    // Signature verification - added for security
+    if (!signature || !message) {
+      return res.status(400).json({
+        success: false,
+        message: 'Signature verification required'
+      });
+    }
+    
+    // Verify the signature
+    const isSignatureValid = verifySignature(message, signature, walletAddress);
+    if (!isSignatureValid) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid signature. Failed to verify wallet ownership.'
       });
     }
     
