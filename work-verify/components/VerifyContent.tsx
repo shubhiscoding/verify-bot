@@ -295,7 +295,7 @@ export default function VerifyContent() {
 
           <div className="text-sm text-black text-center">
             <p>After successful verification, you will be granted the required role in Discord.</p>
-            <p className="mt-2 text-xs text-gray-600">You'll need to sign a message to prove wallet ownership.</p>
+            <p className="mt-2 text-xs text-gray-600">You&apos;ll need to sign a message to prove wallet ownership.</p>
           </div>
         </>
       )}
