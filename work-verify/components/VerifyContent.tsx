@@ -15,14 +15,21 @@ type TokenBalance = {
   decimals: number;
 };
 
+type SignatureData = {
+  signature: string;
+  message: string;
+};
+
 export default function VerifyContent() {
   const { connection } = useConnection();
-  const { publicKey, connected } = useWallet();
+  const { publicKey, connected, signMessage } = useWallet();
   const [tokenBalance, setTokenBalance] = useState<TokenBalance | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [verifying, setVerifying] = useState(false);
   const [verificationResult, setVerificationResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [signatureData, setSignatureData] = useState<SignatureData | null>(null);
+  const [signingMessage, setSigningMessage] = useState(false);
   const isFetchingRef = useRef(false);
   const searchParams = useSearchParams();
 
@@ -72,8 +79,38 @@ export default function VerifyContent() {
     fetchTokenBalance();
   }, [fetchTokenBalance]);
 
+  const handleSignMessage = async () => {
+    if (!publicKey || !verificationCode || !signMessage) {
+      setError("Cannot sign message: wallet not connected or missing verification code");
+      return;
+    }
+
+    try {
+      setSigningMessage(true);
+      setError(null);
+
+      // Create a message including the verification code to prevent replay attacks
+      const messageString = `Verify wallet ownership for Discord role: ${verificationCode}`;
+      const encodedMessage = new TextEncoder().encode(messageString);
+      
+      // Sign the message
+      const signature = await signMessage(encodedMessage);
+      
+      // Store the signature data
+      setSignatureData({
+        signature: Buffer.from(signature).toString('base64'),
+        message: messageString
+      });
+    } catch (err) {
+      console.error('Error signing message:', err);
+      setError("Failed to sign message with wallet");
+    } finally {
+      setSigningMessage(false);
+    }
+  };
+
   const verifyWallet = async () => {
-    if (!verificationCode || !publicKey || !tokenBalance) return;
+    if (!verificationCode || !publicKey || !tokenBalance || !signatureData) return;
 
     try {
       setVerifying(true);
@@ -86,6 +123,8 @@ export default function VerifyContent() {
           verificationCode,
           walletAddress: publicKey.toString(),
           tokenBalance: tokenBalance.amount,
+          signature: signatureData.signature,
+          message: signatureData.message
         }),
       });
 
@@ -103,17 +142,12 @@ export default function VerifyContent() {
     }
   };
 
+  // Automatically verify after signature is completed
   useEffect(() => {
-    if (
-      tokenBalance &&
-      tokenBalance.amount >= REQUIRED_BALANCE &&
-      !verifying &&
-      !verificationResult &&
-      verificationCode
-    ) {
+    if (signatureData && tokenBalance && tokenBalance.amount >= REQUIRED_BALANCE && !verifying && !verificationResult) {
       verifyWallet();
     }
-  }, [tokenBalance, verifying, verificationResult, verificationCode]);
+  }, [signatureData, tokenBalance, verifying, verificationResult]);
 
   if (!verificationCode) {
     return (
@@ -211,6 +245,10 @@ export default function VerifyContent() {
                           <div className="bg-green-100 text-green-700 p-2 rounded text-center">
                             {verifying ? (
                               <p>Verifying your wallet...</p>
+                            ) : signatureData ? (
+                              <p>Signature verified! Processing verification...</p>
+                            ) : signingMessage ? (
+                              <p>Waiting for wallet signature...</p>
                             ) : (
                               <p>Your balance meets the requirements!</p>
                             )}
@@ -232,13 +270,19 @@ export default function VerifyContent() {
                 )}
               </div>
 
-              {tokenBalance && tokenBalance.amount >= REQUIRED_BALANCE && !verifying && (
+              {tokenBalance && tokenBalance.amount >= REQUIRED_BALANCE && !signatureData && !signingMessage && !verifying && (
                 <button
-                  onClick={verifyWallet}
+                  onClick={handleSignMessage}
                   className="w-full mt-6 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
                 >
-                  Verify Wallet
+                  Sign Message to Verify Wallet
                 </button>
+              )}
+
+              {signingMessage && (
+                <div className="text-center mt-4 text-black">
+                  <p>Please sign the message in your wallet...</p>
+                </div>
               )}
 
               {verifying && (
@@ -251,6 +295,7 @@ export default function VerifyContent() {
 
           <div className="text-sm text-black text-center">
             <p>After successful verification, you will be granted the required role in Discord.</p>
+            <p className="mt-2 text-xs text-gray-600">You'll need to sign a message to prove wallet ownership.</p>
           </div>
         </>
       )}
