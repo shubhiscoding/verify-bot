@@ -30,6 +30,8 @@ if (!process.env.SUPABASE_URL) throw new Error('SUPABASE_URL is required');
 if (!process.env.SUPABASE_KEY) throw new Error('SUPABASE_KEY is required');
 if (!process.env.SOLANA_RPC_URL) throw new Error('SOLANA_RPC_URL is required');
 
+const REQUIRED_BALANCE=200000;
+
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -332,7 +334,7 @@ app.post('/api/verify-wallet', async (req: Request, res: Response) => {
       
       // Check if any wallet has sufficient balance
       const currentBalance = await checkTokenBalance(walletAddress);
-      const hasSufficientBalance = currentBalance >= 100000;
+      const hasSufficientBalance = currentBalance >= REQUIRED_BALANCE;
       
       if (hasSufficientBalance) {
         active = true;
@@ -404,7 +406,7 @@ app.post('/api/verify-wallet', async (req: Request, res: Response) => {
       } else {
         return res.json({ 
           success: false, 
-          message: `Insufficient token balance. You need at least 100000 tokens across at least one wallet. This wallet's balance: ${currentBalance}` 
+          message: `Insufficient token balance. You need at least ${REQUIRED_BALANCE} tokens across at least one wallet. This wallet's balance: ${currentBalance}` 
         });
       }
     } catch (error) {
@@ -426,7 +428,7 @@ app.post('/api/verify-wallet', async (req: Request, res: Response) => {
 async function checkAnyWalletHasSufficientBalance(addresses: string[]): Promise<boolean> {
   for (const address of addresses) {
     const balance = await checkTokenBalance(address);
-    if (balance >= 100000) {
+    if (balance >= REQUIRED_BALANCE) {
       return true;
     }
   }
