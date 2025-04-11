@@ -7,7 +7,7 @@ import { useSearchParams } from 'next/navigation';
 
 const SPECIFIC_TOKEN_MINT = "F7Hwf8ib5DVCoiuyGr618Y3gon429Rnd1r5F9R5upump";
 const REQUIRED_BALANCE = 100;
-const VERIFY_API_ENDPOINT = process.env.NEXT_PUBLIC_VERIFY_API_ENDPOINT || 'http://localhost:3001/api/verify-wallet';
+const VERIFY_API_ENDPOINT = process.env.NEXT_PUBLIC_VERIFY_API_ENDPOINT!
 
 type TokenBalance = {
   mint: string;

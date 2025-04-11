@@ -64,7 +64,7 @@ app.use(cors());
 app.use(express.json());
 
 const PORT = process.env.PORT || 3001;
-const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:3000';
+const CLIENT_URL = process.env.CLIENT_URL !;
 
 // Function to check token balance for a wallet
 async function checkTokenBalance(walletAddress: string): Promise<number> {
