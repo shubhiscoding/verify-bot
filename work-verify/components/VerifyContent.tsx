@@ -137,13 +137,15 @@ export default function VerifyContent() {
       setVerificationResult({ success: true, message: result.message || "Verification successful!" });
   
     }
-    catch (err: any) { 
+    catch (err : unknown) { 
       console.error("Verification Error:", err);
-      setVerificationResult({
-        success: false,
-        message: err.message || "An unexpected error occurred during verification."
-      });
-       setSignatureData(null); 
+      if(err instanceof Error){
+        setVerificationResult({
+          success: false,
+          message: err.message || "An unexpected error occurred during verification."
+        });
+         setSignatureData(null);
+      } 
     } finally {
       setVerifying(false);
     }
