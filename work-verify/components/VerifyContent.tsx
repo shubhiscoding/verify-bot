@@ -111,11 +111,12 @@ export default function VerifyContent() {
 
   const verifyWallet = async () => {
     if (!verificationCode || !publicKey || !tokenBalance || !signatureData) return;
-
+  
     try {
       setVerifying(true);
-      setError(null);
-
+      setError(null); 
+      setVerificationResult(null); 
+  
       const response = await fetch(VERIFY_API_ENDPOINT, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -127,16 +128,24 @@ export default function VerifyContent() {
           message: signatureData.message
         }),
       });
-
+  
       const result = await response.json();
-      if (!response.ok) throw new Error(result.message || "Verification failed");
-
-      setVerificationResult(result);
-    } 
-    catch (err) {
-      console.error(err);
-      setError("Verification error");
-      setVerificationResult(null);
+  
+      if (!response.ok) {
+        throw new Error(result.message || "Verification request failed");
+      }
+      setVerificationResult({ success: true, message: result.message || "Verification successful!" });
+  
+    }
+    catch (err : unknown) { 
+      console.error("Verification Error:", err);
+      if(err instanceof Error){
+        setVerificationResult({
+          success: false,
+          message: err.message || "An unexpected error occurred during verification."
+        });
+         setSignatureData(null);
+      } 
     } finally {
       setVerifying(false);
     }
