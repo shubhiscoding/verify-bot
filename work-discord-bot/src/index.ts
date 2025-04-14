@@ -226,7 +226,7 @@ async function handleCommandInteraction(interaction: CommandInteraction) {
 
     row.addComponents(
       new ButtonBuilder()
-        .setLabel('Buy 200k WORK')
+        .setLabel(`Buy ${REQUIRED_BALANCE/1000}k WORK`)
         .setStyle(ButtonStyle.Link)
         .setURL(`${CLIENT_URL}/buy`)
     );

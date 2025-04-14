@@ -9,55 +9,13 @@ import axios from 'axios';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { Buffer } from 'buffer';
+import { SPECIFIC_TOKEN_MINT , REQUIRED_BALANCE , SOL_MINT , VERIFY_API_ENDPOINT , JUPITER_QUOTE_API , JUPITER_SWAP_API } from "@/utils/config";
+import { TokenBalance , SignatureData , QuoteResponse , SwapResponse} from "@/utils/types";
 
 if (typeof window !== 'undefined' && typeof window.Buffer === 'undefined') {
   window.Buffer = Buffer;
 }
 
-const SPECIFIC_TOKEN_MINT = "F7Hwf8ib5DVCoiuyGr618Y3gon429Rnd1r5F9R5upump";
-const REQUIRED_BALANCE = 200000;
-const SOL_MINT = 'So11111111111111111111111111111111111111112';
-const VERIFY_API_ENDPOINT = process.env.NEXT_PUBLIC_VERIFY_API_ENDPOINT!;
-const JUPITER_QUOTE_API = 'https://lite-api.jup.ag/swap/v1/quote';
-const JUPITER_SWAP_API = 'https://lite-api.jup.ag/swap/v1/swap';
-
-type TokenBalance = {
-  mint: string;
-  amount: number;
-  decimals: number;
-  lamports: string;
-};
-
-type SignatureData = {
-  signature: string;
-  message: string;
-};
-
-interface PlatformFee {
-    amount: string;
-    feeBps: number;
-}
-
-
-interface QuoteResponse {
-    inputMint: string;
-    inAmount: string;
-    outputMint: string;
-    outAmount: string;
-    otherAmountThreshold: string;
-    swapMode: string;
-    slippageBps: number;
-    platformFee: PlatformFee | null;
-    priceImpactPct: string;
-    contextSlot: number;
-    timeTaken: number;
-}
-
-interface SwapResponse {
-    swapTransaction: string;
-    lastValidBlockHeight: number;
-    prioritizationFeeLamports?: number;
-}
 
 export default function VerifyContent() {
   const { connection } = useConnection();
@@ -506,7 +464,7 @@ export default function VerifyContent() {
               ? 'bg-gray-400 cursor-not-allowed'
               : recentlyCompleted 
                 ? 'bg-green-600 hover:bg-green-700 shadow-md'
-                : 'bg-purple-600 hover:bg-purple-700'
+                : 'bg-[#8151fd] hover:bg-[#8151fd]'
           }`}
         >
           {signingMessage ? 'Waiting for Signature...' : verifying ? 'Processing...' : 'Sign Message to Verify Ownership'}
@@ -604,7 +562,7 @@ export default function VerifyContent() {
                                           className={`w-full mt-4 px-4 py-2 rounded text-white font-semibold transition duration-200 ${
                                               (swapLoading || quoteLoading || !quoteData || !buyAmountLamports || !tokenBalance?.decimals)
                                                   ? 'bg-gray-400 cursor-not-allowed'
-                                                  : 'bg-blue-500 hover:bg-blue-600'
+                                                  : 'bg-[#8151fd] hover:bg-[#8151fd]'
                                           }`}
                                       >
                                         {swapLoading ? 'Processing Purchase...' : quoteLoading ? 'Fetching Price...' : !quoteData ? 'Loading Price...' : `Buy ${REQUIRED_BALANCE.toLocaleString()} $WORK (~${formatSolAmount(quoteData?.inAmount)} SOL)`}
@@ -687,7 +645,7 @@ export default function VerifyContent() {
                                        className={`w-full px-4 py-2 rounded text-white font-semibold transition duration-200 ${
                                            (swapLoading || quoteLoading || !quoteData || !buyAmountLamports || !tokenBalance?.decimals)
                                                ? 'bg-gray-400 cursor-not-allowed'
-                                               : 'bg-blue-600 hover:bg-blue-700'
+                                               : 'bg-[#8151fd] hover:bg-[#8151fd]'
                                        }`}
                                    >
                                      {swapLoading ? 'Processing Purchase...' : quoteLoading ? 'Fetching Price...' : !quoteData ? 'Loading Price...' : `Buy ${REQUIRED_BALANCE.toLocaleString()} $WORK (~${formatSolAmount(quoteData?.inAmount)} SOL)`}

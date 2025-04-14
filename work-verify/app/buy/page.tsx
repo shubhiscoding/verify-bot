@@ -6,28 +6,9 @@ import { Transaction, VersionedTransaction } from '@solana/web3.js';
 import axios, { AxiosResponse } from 'axios';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import { QuoteResponse, SwapResponse } from '@/utils/types';
+import { SOL_MINT , SPECIFIC_TOKEN_MINT ,VERIFY_API_ENDPOINT ,JUPITER_QUOTE_API , JUPITER_SWAP_API , TOKEN_DECIMALS, REQUIRED_BALANCE } from '@/utils/config';
 
-
-interface PlatformFee {
-  amount: string;
-  mint: string;
-}
-
-interface QuoteResponse {
-  inAmount: string;
-  outAmount: string;
-  otherAmountThreshold: string;
-  platformFee?: PlatformFee;
-  slippageBps: number;
-  swapMode: string;
-  timeTaken: number;
-}
-
-
-interface SwapTransactionResponse {
-  swapTransaction: string;
-  simulationError?: string;
-}
 
 export default function SwapPage() {
   const { publicKey, sendTransaction } = useWallet();
@@ -39,18 +20,19 @@ export default function SwapPage() {
   const [quoteData, setQuoteData] = useState<QuoteResponse | null>(null);
   const [quoteError, setQuoteError] = useState<string | null>(null);
 
-  const buyAmount = 200000000000;
+  const buyAmount = REQUIRED_BALANCE * (10**TOKEN_DECIMALS);
+  console.log(buyAmount)
   //const feeAccount = ''
 
   const getQuote = async (): Promise<QuoteResponse> => {
     try {
       setQuoteLoading(true);
       const response: AxiosResponse<QuoteResponse> = await axios.get(
-        'https://lite-api.jup.ag/swap/v1/quote',
+        JUPITER_QUOTE_API,
         {
           params: {
-            inputMint: 'So11111111111111111111111111111111111111112',
-            outputMint: 'F7Hwf8ib5DVCoiuyGr618Y3gon429Rnd1r5F9R5upump',
+            inputMint: SOL_MINT,
+            outputMint: SPECIFIC_TOKEN_MINT,
             amount: buyAmount,
             swapMode: 'ExactOut',
             platformFeeBps: '100',
@@ -96,15 +78,15 @@ export default function SwapPage() {
 
   const getSwapTransaction = async (
     quoteResponse: QuoteResponse
-  ): Promise<SwapTransactionResponse | null> => {
+  ): Promise<SwapResponse | null> => {
     try {
       if (!publicKey) {
         toast.error('Wallet not connected');
         return null;
       }
 
-      const response: AxiosResponse<SwapTransactionResponse> = await axios.post(
-        'https://api.jup.ag/swap/v1/swap',
+      const response: AxiosResponse<SwapResponse> = await axios.post(
+        JUPITER_SWAP_API,
         {
           userPublicKey: publicKey.toString(),
           quoteResponse: quoteResponse,
@@ -235,7 +217,7 @@ export default function SwapPage() {
     <div className="max-w-lg mt-48 mx-auto p-4 text-black">
       <ToastContainer position="top-left" autoClose={4000} />
 
-      <h1 className="text-3xl font-bold mb-8">Swap SOL for Work Tokens</h1>
+      <h1 className="text-3xl font-bold mb-8 text-white">Swap SOL for Work Tokens</h1>
 
       <div className="bg-gray-100 p-6 rounded-lg shadow-lg mb-8">
         <div className="mt-4">
@@ -282,18 +264,6 @@ export default function SwapPage() {
                 <span>You&apos;ll receive:</span>
                 <span className="font-medium">{buyAmount/1000000} WORK</span>
               </div>
-              {quoteData.platformFee && (
-                <div className="flex justify-between mt-2 text-sm">
-                  <span>Platform fee:</span>
-                  <span>
-                    {(
-                      (parseFloat(quoteData.platformFee.amount) / parseFloat(quoteData.inAmount)) *
-                      100
-                    ).toFixed(2)}
-                    %
-                  </span>
-                </div>
-              )}
             </div>
           )}
 
@@ -307,7 +277,7 @@ export default function SwapPage() {
                   ? 'bg-gray-400 cursor-not-allowed'
                   : success
                     ? 'bg-green-500 hover:bg-green-600'
-                    : 'bg-[#9D00FF] hover:bg-blue-600'
+                    : 'bg-[#8151fd] hover:bg-blue-600'
             } text-white font-bold transition duration-200`}
           >
             {!publicKey ? 'Connect Wallet First' : !quoteData ? 'Loading Quote...' : loading ? 'Processing...' : success ? 'Successfully Purchased!' : `Buy ${buyAmount/1000000} $WORK for ${quoteData ? formatSolAmount(quoteData.inAmount) + ' SOL' : '...'}`}
