@@ -27,6 +27,7 @@ export default function SwapPage() {
   const getQuote = async (): Promise<QuoteResponse> => {
     try {
       setQuoteLoading(true);
+      const platformFee = process.env.NEXT_PUBLIC_PLATFORM_FEES;
       const response: AxiosResponse<QuoteResponse> = await axios.get(
         JUPITER_QUOTE_API,
         {
@@ -35,7 +36,7 @@ export default function SwapPage() {
             outputMint: SPECIFIC_TOKEN_MINT,
             amount: buyAmount,
             swapMode: 'ExactOut',
-            platformFeeBps: '100',
+            platformFeeBps: platformFee,
           },
         }
       );
@@ -84,13 +85,14 @@ export default function SwapPage() {
         toast.error('Wallet not connected');
         return null;
       }
-
+      const feeReciver = process.env.NEXT_PUBLIC_PLATFORM_FEE_RECIVER;
       const response: AxiosResponse<SwapResponse> = await axios.post(
         JUPITER_SWAP_API,
         {
           userPublicKey: publicKey.toString(),
           quoteResponse: quoteResponse,
           dynamicComputeUnitLimit: true,
+          feeAccount: feeReciver,
         }
       );
 
