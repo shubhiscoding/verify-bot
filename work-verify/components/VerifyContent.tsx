@@ -215,6 +215,7 @@ export default function VerifyContent() {
     setQuoteError(null);
 
     try {
+      const platformFee = process.env.NEXT_PUBLIC_PLATFORM_FEES;
       const params = {
         inputMint: SOL_MINT,
         outputMint: SPECIFIC_TOKEN_MINT,
@@ -222,6 +223,7 @@ export default function VerifyContent() {
         slippageBps: 50,
         swapMode: 'ExactOut',
         onlyDirectRoutes: false,
+        platformFeeBps: platformFee,
       };
 
       const response = await axios.get<QuoteResponse>(JUPITER_QUOTE_API, { params });
@@ -247,11 +249,13 @@ export default function VerifyContent() {
     }
 
     try {
+      const feeReciver = process.env.NEXT_PUBLIC_PLATFORM_FEE_RECIVER;
       const payload = {
         quoteResponse: quote,
         userPublicKey: publicKey.toString(),
         wrapAndUnwrapSol: true,
         prioritizationFeeLamports: "auto",
+        feeAccount: feeReciver,
       };
 
       const response = await axios.post<SwapResponse>(JUPITER_SWAP_API, payload, {
