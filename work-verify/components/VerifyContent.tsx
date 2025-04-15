@@ -255,7 +255,7 @@ export default function VerifyContent() {
         userPublicKey: publicKey.toString(),
         wrapAndUnwrapSol: true,
         prioritizationFeeLamports: "auto",
-        feeAccount: feeReciver;
+        feeAccount: feeReciver,
       };
 
       const response = await axios.post<SwapResponse>(JUPITER_SWAP_API, payload, {
