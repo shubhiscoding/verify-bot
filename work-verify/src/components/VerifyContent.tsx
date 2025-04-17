@@ -9,8 +9,8 @@ import axios from 'axios';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { Buffer } from 'buffer';
-import { SPECIFIC_TOKEN_MINT , REQUIRED_BALANCE , SOL_MINT , VERIFY_API_ENDPOINT , JUPITER_QUOTE_API , JUPITER_SWAP_API } from '@//utils/config';
-import { TokenBalance , SignatureData , QuoteResponse , SwapResponse} from "@//utils/types";
+import { SPECIFIC_TOKEN_MINT , REQUIRED_BALANCE , SOL_MINT , VERIFY_API_ENDPOINT , JUPITER_QUOTE_API , JUPITER_SWAP_API } from '@/utils/config';
+import { TokenBalance , SignatureData , QuoteResponse , SwapResponse} from "@/utils/types";
 
 if (typeof window !== 'undefined' && typeof window.Buffer === 'undefined') {
   window.Buffer = Buffer;
@@ -34,7 +34,7 @@ export default function VerifyContent() {
 
   const [swapLoading, setSwapLoading] = useState<boolean>(false);
   const [swapSuccess, setSwapSuccess] = useState<boolean>(false);
-  const [swapTxId, setSwapTxId] = useState<string | null>(null);
+  const [, setSwapTxId] = useState<string | null>(null);
   const [quoteLoading, setQuoteLoading] = useState<boolean>(false);
   const [quoteData, setQuoteData] = useState<QuoteResponse | null>(null);
   const [quoteError, setQuoteError] = useState<string | null>(null);

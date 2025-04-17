@@ -6,8 +6,8 @@ import { Transaction, VersionedTransaction } from '@solana/web3.js';
 import axios, { AxiosResponse } from 'axios';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import { QuoteResponse ,SwapResponse } from '@//utils/types';
-import { SOL_MINT , SPECIFIC_TOKEN_MINT ,VERIFY_API_ENDPOINT ,JUPITER_QUOTE_API , JUPITER_SWAP_API , TOKEN_DECIMALS, REQUIRED_BALANCE } from '@//utils/config';
+import { QuoteResponse ,SwapResponse } from '@/utils/types';
+import { SOL_MINT , SPECIFIC_TOKEN_MINT ,JUPITER_QUOTE_API , JUPITER_SWAP_API , TOKEN_DECIMALS, REQUIRED_BALANCE } from '@/utils/config';
 
 
 export default function SwapPage() {
