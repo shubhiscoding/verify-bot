@@ -38,6 +38,10 @@ export const deposit = async (
   params: DepositInput & { amount: number }
 ): Promise<DepositOutput> => {
   const xcrow = await makeXcrow();
+  const session = await auth();
+
+  if (!session) throw new Error("Session is required.");
+
   const response = await xcrow.deposit(params);
   return response;
 };
@@ -45,13 +49,19 @@ export const deposit = async (
 export const depositInDatabase = async ({
   amount,
   vaultId,
-  discordUserId,
+  receiverId,
+  txId
 }: {
   amount: number;
   vaultId: string;
-  discordUserId: string;
+  receiverId: string;
+  txId?: string;
 }) => {
   const supabase = await makeSupabase();
+  const session = await auth();
+
+  const senderId = session?.user?.id;
+
   const { data, error } = await supabase
     .from("vaults")
     .select("vault_id, amount, decimals")
@@ -65,7 +75,7 @@ export const depositInDatabase = async ({
 
   if (!data) {
     const { error: insertError } = await supabase.from("vaults").insert({
-      discord_user_id: discordUserId,
+      discord_user_id: receiverId,
       vault_id: vaultId,
       amount: 0,
       decimals: dbDecimals,
@@ -88,6 +98,17 @@ export const depositInDatabase = async ({
 
   if (updateError)
     throw new Error(`Error om vault update: ${updateError.message}`);
+
+  const { error: tipsError } = await supabase.from("tips").insert({
+    sender: senderId,
+    receiver: receiverId,
+    amount: rawAmount,
+    tax_id: txId,
+    decimals: 6,
+    status: "sent",
+  });
+
+  if (tipsError) throw new Error(`Error om vault update: ${tipsError.message}`);
 
   revalidatePath("/vault");
 };

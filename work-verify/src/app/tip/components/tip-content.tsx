@@ -10,6 +10,7 @@ import { useSearchParams } from "next/navigation";
 import { execute } from "@//actions/execute";
 import { deposit, depositInDatabase } from "@//actions/vault";
 import { toast } from "sonner";
+import { useSession } from "next-auth/react";
 
 type TokenBalance = {
   mint: string;
@@ -25,6 +26,7 @@ const mintAddress = process.env.NEXT_PUBLIC_USDC_MINT_ADDRESS || "";
 
 export function TipContent({ receiverVault }: TipContentProps) {
   const searchParams = useSearchParams();
+  const { data: session } = useSession();
   const [tokenBalance, setTokenBalance] = useState<TokenBalance | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -90,6 +92,10 @@ export function TipContent({ receiverVault }: TipContentProps) {
       console.log("Receiver Id is required.");
       return;
     }
+    if (!session) {
+      toast.error("You must login with Discord.");
+      return;
+    }
 
     try {
       setLoading(true);
@@ -119,7 +125,8 @@ export function TipContent({ receiverVault }: TipContentProps) {
       await depositInDatabase({
         amount,
         vaultId: depositRes.vaultId,
-        discordUserId: receiverDiscordId,
+        receiverId: receiverDiscordId,
+        txId: txHash,
       });
 
       toast(
@@ -239,12 +246,14 @@ export function TipContent({ receiverVault }: TipContentProps) {
           <button
             className="w-full mt-6 px-4 py-4 bg-violet-500 text-white rounded hover:bg-violet-600 cursor-pointer disabled:cursor-not-allowed disabled:bg-zinc-500"
             onClick={onSubmit}
-            disabled={!!error || loading || !hasBalance()}
+            disabled={!!error || loading || !hasBalance() || !session}
           >
             {loading ? (
               <span>Loading...</span>
             ) : !hasBalance() ? (
               <span>Insufficient Balance</span>
+            ) : !session ? (
+              <span>You must login with Discord</span>
             ) : (
               <div className="flex items-center justify-center font-semibold ">
                 <span>Send</span>
