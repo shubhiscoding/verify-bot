@@ -29,7 +29,6 @@ if (!process.env.ROLE_ID) throw new Error('ROLE_ID is required');
 if (!process.env.SUPABASE_URL) throw new Error('SUPABASE_URL is required');
 if (!process.env.SUPABASE_KEY) throw new Error('SUPABASE_KEY is required');
 if (!process.env.SOLANA_RPC_URL) throw new Error('SOLANA_RPC_URL is required');
-if (!process.env.CLIENT_TIP_URL) throw new Error('CLIENT_TIP_URL is required');
 
 const REQUIRED_BALANCE=200000;
 
@@ -82,7 +81,6 @@ app.use(express.json());
 
 const PORT = process.env.PORT || 3001;
 const CLIENT_URL = process.env.CLIENT_URL!;
-const CLIENT_TIP_URL = process.env.CLIENT_TIP_URL!;
 
 async function checkTokenBalance(walletAddress: string): Promise<number> {
   try {
@@ -257,7 +255,7 @@ async function handleCommandInteraction(interaction: CommandInteraction) {
       return;
     }
 
-    const verificationLink = `${CLIENT_TIP_URL}/tip?receiver_user_id=${mentionedUser.id}&receiver_username=${mentionedUser.globalName}&amount=${amount}`;
+    const verificationLink = `${CLIENT_URL}/tip?receiver_user_id=${mentionedUser.id}&receiver_username=${mentionedUser.globalName}&amount=${amount}`;
     const row = new ActionRowBuilder<ButtonBuilder>();
     row.addComponents(
       new ButtonBuilder()
