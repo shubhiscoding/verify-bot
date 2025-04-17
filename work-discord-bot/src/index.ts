@@ -19,7 +19,7 @@ import dotenv from 'dotenv';
 import { createClient } from '@supabase/supabase-js';
 import { Connection, PublicKey } from '@solana/web3.js';
 import { TOKEN_PROGRAM_ID } from '@solana/spl-token';
-import * as nacl from 'tweetnacl'; // Import nacl for signature verification
+import * as nacl from 'tweetnacl'; 
 
 dotenv.config();
 
@@ -29,6 +29,7 @@ if (!process.env.ROLE_ID) throw new Error('ROLE_ID is required');
 if (!process.env.SUPABASE_URL) throw new Error('SUPABASE_URL is required');
 if (!process.env.SUPABASE_KEY) throw new Error('SUPABASE_KEY is required');
 if (!process.env.SOLANA_RPC_URL) throw new Error('SOLANA_RPC_URL is required');
+if (!process.env.CLIENT_TIP_URL) throw new Error('CLIENT_TIP_URL is required');
 
 const REQUIRED_BALANCE=200000;
 
@@ -58,6 +59,19 @@ const commands = [
     .setName('verify')
     .setDescription('Verify your Solana wallet token holdings to get special roles')
     .toJSON(),
+  new SlashCommandBuilder()
+    .setName("tip")
+    .setDescription("Tip a user with a specific amount in USDC")
+    .addUserOption((option) =>
+      option.setName("user").setDescription("The user to tip").setRequired(true)
+    )
+    .addNumberOption((option) =>
+      option
+        .setName("amount")
+        .setDescription("Amount in USDC to tip")
+        .setRequired(true)
+    )
+    .toJSON(),
 ];
 
 const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
@@ -68,29 +82,26 @@ app.use(express.json());
 
 const PORT = process.env.PORT || 3001;
 const CLIENT_URL = process.env.CLIENT_URL!;
+const CLIENT_TIP_URL = process.env.CLIENT_TIP_URL!;
 
-// Function to check token balance for a wallet
 async function checkTokenBalance(walletAddress: string): Promise<number> {
   try {
     const walletPublicKey = new PublicKey(walletAddress);
     const tokenMintPublicKey = new PublicKey(TOKEN_MINT_ADDRESS);
     
-    // Get all token accounts owned by the wallet
     const tokenAccounts = await solanaConnection.getParsedTokenAccountsByOwner(
       walletPublicKey,
       { programId: TOKEN_PROGRAM_ID }
     );
     
-    // Find the specific token account for our token
     const tokenAccount = tokenAccounts.value.find(
       account => account.account.data.parsed.info.mint === tokenMintPublicKey.toString()
     );
     
     if (!tokenAccount) {
-      return 0; // No token account found
+      return 0; 
     }
     
-    // Get the token balance
     const balance = tokenAccount.account.data.parsed.info.tokenAmount.uiAmount;
     return balance;
   } catch (error) {
@@ -99,7 +110,6 @@ async function checkTokenBalance(walletAddress: string): Promise<number> {
   }
 }
 
-// Register commands when bot is ready
 client.once(Events.ClientReady, async () => {
   console.log(`Logged in as ${client.user?.tag}!`);
   
@@ -113,14 +123,12 @@ client.once(Events.ClientReady, async () => {
     
     console.log('Successfully reloaded application (/) commands.');
 
-    // Start the periodic balance check
     setInterval(checkAllBalances, 15 * 1000); // Run every 15 seconds (for testing, adjust as needed)
   } catch (error) {
     console.error(error);
   }
 });
 
-// Handle commands and interactions
 client.on(Events.InteractionCreate, async (interaction: Interaction) => {
   try {
     if (interaction.isCommand()) {
@@ -131,7 +139,7 @@ client.on(Events.InteractionCreate, async (interaction: Interaction) => {
   } catch (error) {
     console.error('Error handling interaction:', error);
     
-    // Reply with error if possible
+
     if (interaction.isRepliable() && !interaction.replied) {
       await interaction.reply({ 
         content: 'An error occurred while processing your command.', 
@@ -223,11 +231,45 @@ async function handleCommandInteraction(interaction: CommandInteraction) {
           .setCustomId(`add_wallet:${interaction.user.id}`)
       );
     }
+
+    row.addComponents(
+      new ButtonBuilder()
+        .setLabel(`Buy ${REQUIRED_BALANCE/1000}k WORK`)
+        .setStyle(ButtonStyle.Link)
+        .setURL(`${CLIENT_URL}/buy`)
+    );
     
     await interaction.reply({ 
       content: '**Wallet Verification**\nSelect an option below to manage your wallet verification:',
       components: [row],
       ephemeral: true 
+    });
+  } else if (interaction.commandName === "tip") {
+    const mentionedUser = interaction.options.get("user")?.user;
+    const amount = interaction.options.get("amount")?.value;
+
+    if (!mentionedUser || !amount) {
+      await interaction.reply({
+        content: "User and amount is required.",
+        ephemeral: true,
+      });
+
+      return;
+    }
+
+    const verificationLink = `${CLIENT_TIP_URL}/tip?receiver_user_id=${mentionedUser.id}&receiver_username=${mentionedUser.globalName}&amount=${amount}`;
+    const row = new ActionRowBuilder<ButtonBuilder>();
+    row.addComponents(
+      new ButtonBuilder()
+        .setLabel("Continue")
+        .setStyle(ButtonStyle.Link)
+        .setURL(verificationLink)
+    );
+
+    await interaction.reply({
+      content: `**You're about to tip @${mentionedUser} with ${amount} USDC**\nClick the button below to complete the transaction on our secure website:`,
+      components: [row],
+      ephemeral: true,
     });
   }
 }
@@ -235,16 +277,12 @@ async function handleCommandInteraction(interaction: CommandInteraction) {
 // Helper function to verify a wallet signature
 function verifySignature(message: string, signature: string, walletAddress: string): boolean {
   try {
-    // Convert signature from base64 string to Uint8Array
     const signatureBytes = Buffer.from(signature, 'base64');
     
-    // Convert wallet address string to PublicKey
     const publicKey = new PublicKey(walletAddress);
     
-    // Convert message to Uint8Array
     const messageBytes = new TextEncoder().encode(message);
     
-    // Verify signature
     return nacl.sign.detached.verify(
       messageBytes,
       signatureBytes,
@@ -314,7 +352,7 @@ app.post('/api/verify-wallet', async (req: Request, res: Response) => {
         .eq('discord_user_id', userId)
         .single();
       
-      if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116 means no rows returned
+      if (fetchError && fetchError.code !== 'PGRST116') { 
         console.error('Error fetching user from database:', fetchError);
         return res.status(500).json({
           success: false,

@@ -4,43 +4,43 @@ import {
   ConnectionProvider,
   WalletProvider,
 } from "@solana/wallet-adapter-react";
-import { WalletModalProvider, WalletMultiButton } from "@solana/wallet-adapter-react-ui";
+import {
+  WalletModalProvider,
+  WalletMultiButton,
+} from "@solana/wallet-adapter-react-ui";
 import "@solana/wallet-adapter-react-ui/styles.css";
-import { PhantomWalletAdapter, SolflareWalletAdapter ,  } from "@solana/wallet-adapter-wallets";
-
+import { DiscordSignInButton } from "./discord-sign-in-button"
 
 export default function AppWalletProvider({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  //const network = WalletAdapterNetwork.Mainnet; 
-  const [endpointUrl, setEndpointUrl] = useState<string>('');
+  const [endpointUrl, setEndpointUrl] = useState<string>("");
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       const origin = window.location.origin;
       setEndpointUrl(`${origin}/api/rpc`);
     }
-  }, []); 
-  const wallets = useMemo(
-    () => [
-      new PhantomWalletAdapter(),
-      new SolflareWalletAdapter(),
-    ],
-    [] 
-  );
+  }, []);
+
+  const wallets = useMemo(() => [], []);
 
   if (!endpointUrl) {
-    return null; 
+    return null;
   }
 
   return (
     <ConnectionProvider endpoint={endpointUrl}>
       <WalletProvider wallets={wallets} autoConnect>
         <WalletModalProvider>
-          <div style={{ position: 'absolute', top: 24, right: 30 }}>
+          <div
+            className="flex gap-2 items-center"
+            style={{ position: "absolute", top: 24, right: 30 }}
+          >
             <WalletMultiButton />
+            <DiscordSignInButton />
           </div>
           {children}
         </WalletModalProvider>
