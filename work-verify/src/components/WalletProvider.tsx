@@ -11,6 +11,7 @@ import {
 import "@solana/wallet-adapter-react-ui/styles.css";
 import { DiscordSignInButton } from "./discord-sign-in-button"
 
+
 export default function AppWalletProvider({
   children,
 }: {
