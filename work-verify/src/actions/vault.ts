@@ -7,31 +7,36 @@ import { DepositInput, DepositOutput, WithdrawInput } from "@xcrowdev/node";
 import { revalidatePath } from "next/cache";
 
 export const getVaultByUser = async (userDiscordId: string) => {
-  const xcrow = await makeXcrow();
-  const supabase = await makeSupabase();
+  try {
+    const xcrow = await makeXcrow();
+    const supabase = await makeSupabase();
 
-  const { data } = await supabase
-    .from("vaults")
-    .select("vault_id, amount, decimals")
-    .eq("discord_user_id", userDiscordId)
-    .maybeSingle();
+    const { data } = await supabase
+      .from("vaults")
+      .select("vault_id, amount, decimals")
+      .eq("discord_user_id", userDiscordId)
+      .maybeSingle();
 
-  if (!data) {
-    return null;
+    if (!data) {
+      return null;
+    }
+
+    const dbAmount = data.amount;
+    const dbDecimals = data.decimals;
+    const response = await xcrow.getVaultDetails(data.vault_id);
+
+    return {
+      ...response,
+      asset: {
+        ...response.asset,
+        amount: dbAmount,
+        amountParsed: dbAmount / Math.pow(10, dbDecimals),
+      },
+    };
+  } catch (error) {
+    console.log(error);
+    return undefined
   }
-
-  const dbAmount = data.amount;
-  const dbDecimals = data.decimals;
-  const response = await xcrow.getVaultDetails(data.vault_id);
-
-  return {
-    ...response,
-    asset: {
-      ...response.asset,
-      amount: dbAmount,
-      amountParsed: dbAmount / Math.pow(10, dbDecimals),
-    },
-  };
 };
 
 export const deposit = async (
