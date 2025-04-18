@@ -157,8 +157,8 @@ export function TipContent({ receiverVault }: TipContentProps) {
         });
         await sendDiscordTipDirectMessage({
           amount,
-          receiverId: session.user.id,
           senderId: session.user.id,
+          receiverId: receiverDiscordId,
           claimUrl: window?.location?.origin,
         });
       } catch {
