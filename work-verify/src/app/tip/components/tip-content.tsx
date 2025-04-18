@@ -149,22 +149,26 @@ export function TipContent({ receiverVault }: TipContentProps) {
         { duration: 10000 }
       );
 
-      await sendDiscordTipAnnounce({
-        amount,
-        receiverId: receiverDiscordId,
-        senderId: session.user.id,
-      });
-      await sendDiscordTipDirectMessage({
-        amount,
-        receiverId: session.user.id,
-        senderId: session.user.id,
-        claimUrl: window?.location?.origin,
-      });
+      try {
+        await sendDiscordTipAnnounce({
+          amount,
+          receiverId: receiverDiscordId,
+          senderId: session.user.id,
+        });
+        await sendDiscordTipDirectMessage({
+          amount,
+          senderId: session.user.id,
+          receiverId: receiverDiscordId,
+          claimUrl: window?.location?.origin,
+        });
+      } catch {
+        console.log("Error sending Discord message");
+      }
 
       setLoading(false);
     } catch (error) {
       setLoading(false);
-      console.error(error)
+      console.error(error);
       toast.error("An error occurred on transaction. Try again.");
     }
   }
