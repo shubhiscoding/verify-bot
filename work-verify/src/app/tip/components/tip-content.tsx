@@ -11,6 +11,7 @@ import { execute } from "@//actions/execute";
 import { deposit, depositInDatabase } from "@//actions/vault";
 import { toast } from "sonner";
 import { useSession } from "next-auth/react";
+import { sendDiscordTipAnnounce } from "@/actions/discord";
 
 type TokenBalance = {
   mint: string;
@@ -92,7 +93,7 @@ export function TipContent({ receiverVault }: TipContentProps) {
       console.log("Receiver Id is required.");
       return;
     }
-    if (!session) {
+    if (!session || !session.user || !session.user.id) {
       toast.error("You must login with Discord.");
       return;
     }
@@ -144,6 +145,12 @@ export function TipContent({ receiverVault }: TipContentProps) {
         </div>,
         { duration: 10000 }
       );
+
+      await sendDiscordTipAnnounce({
+        amount,
+        receiverId: receiverDiscordId,
+        senderId: session.user.id,
+      });
       setLoading(false);
     } catch {
       setLoading(false);

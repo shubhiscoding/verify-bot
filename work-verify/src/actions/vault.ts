@@ -50,7 +50,7 @@ export const depositInDatabase = async ({
   amount,
   vaultId,
   receiverId,
-  txId
+  txId,
 }: {
   amount: number;
   vaultId: string;

@@ -10,7 +10,8 @@ import {
   REST, 
   Routes, 
   SlashCommandBuilder,
-  ButtonInteraction
+  ButtonInteraction,
+  TextChannel
 } from 'discord.js';
 import express, { Request, Response } from 'express';
 import cors from 'cors';
@@ -460,6 +461,17 @@ app.post('/api/verify-wallet', async (req: Request, res: Response) => {
     });
   }
 });
+
+app.post('/api/send-channel-message', async (req: Request, res: Response) => {
+  const { message, channelId } = req.body;
+  const channel = await client.channels.fetch(channelId);
+
+  if (channel?.isTextBased() && channel instanceof TextChannel) {
+    channel.send(message);
+  } else {
+    console.error('Must be a Text Channel.');
+  }
+})
 
 async function checkAnyWalletHasSufficientBalance(addresses: string[]): Promise<boolean> {
   for (const address of addresses) {
