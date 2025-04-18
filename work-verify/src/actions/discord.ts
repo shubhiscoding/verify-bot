@@ -20,3 +20,28 @@ export const sendDiscordTipAnnounce = async ({
     }),
   });
 };
+
+export const sendDiscordTipDirectMessage = async ({
+  receiverId,
+  senderId,
+  amount,
+  claimUrl,
+}: {
+  senderId: string;
+  receiverId: string;
+  amount: number;
+  claimUrl: string;
+}) => {
+  const claimFinalUrl = `${claimUrl}/vault`;
+
+  await fetch(`${DISCORD_API_URL}/send-direct-message`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      userId: receiverId,
+      message:
+        `🎉 You just received **${amount} USDC** from <@${senderId}>!\n` +
+        `👉 [Go to vault to claim it](${claimFinalUrl})`,
+    }),
+  });
+};

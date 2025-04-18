@@ -11,7 +11,10 @@ import { execute } from "@//actions/execute";
 import { deposit, depositInDatabase } from "@//actions/vault";
 import { toast } from "sonner";
 import { useSession } from "next-auth/react";
-import { sendDiscordTipAnnounce } from "@/actions/discord";
+import {
+  sendDiscordTipAnnounce,
+  sendDiscordTipDirectMessage,
+} from "@/actions/discord";
 
 type TokenBalance = {
   mint: string;
@@ -151,9 +154,17 @@ export function TipContent({ receiverVault }: TipContentProps) {
         receiverId: receiverDiscordId,
         senderId: session.user.id,
       });
+      await sendDiscordTipDirectMessage({
+        amount,
+        receiverId: session.user.id,
+        senderId: session.user.id,
+        claimUrl: window?.location?.origin,
+      });
+
       setLoading(false);
-    } catch {
+    } catch (error) {
       setLoading(false);
+      console.error(error)
       toast.error("An error occurred on transaction. Try again.");
     }
   }
