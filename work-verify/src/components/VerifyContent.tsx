@@ -9,7 +9,7 @@ import axios from 'axios';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { Buffer } from 'buffer';
-import { SPECIFIC_TOKEN_MINT , REQUIRED_BALANCE , SOL_MINT , VERIFY_API_ENDPOINT , JUPITER_QUOTE_API , JUPITER_SWAP_API } from '@/utils/config';
+import { SPECIFIC_TOKEN_MINT , REQUIRED_BALANCE , SOL_MINT , DISCORD_API_URL , JUPITER_QUOTE_API , JUPITER_SWAP_API } from '@/utils/config';
 import { TokenBalance , SignatureData , QuoteResponse , SwapResponse} from "@/utils/types";
 
 if (typeof window !== 'undefined' && typeof window.Buffer === 'undefined') {
@@ -166,7 +166,7 @@ export default function VerifyContent() {
       setVerificationResult(null);
       toast.info("Verifying wallet with server...");
 
-      const response = await fetch(VERIFY_API_ENDPOINT, {
+      const response = await fetch(`${DISCORD_API_URL}/verify-wallet`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
