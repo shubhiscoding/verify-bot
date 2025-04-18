@@ -122,7 +122,7 @@ client.once(Events.ClientReady, async () => {
     
     console.log('Successfully reloaded application (/) commands.');
 
-    setInterval(checkAllBalances, 15 * 1000); // Run every 15 seconds (for testing, adjust as needed)
+    // setInterval(checkAllBalances, 15 * 1000); // Run every 15 seconds (for testing, adjust as needed)
   } catch (error) {
     console.error(error);
   }
@@ -462,14 +462,43 @@ app.post('/api/verify-wallet', async (req: Request, res: Response) => {
   }
 });
 
+// @ts-ignore
 app.post('/api/send-channel-message', async (req: Request, res: Response) => {
   const { message, channelId } = req.body;
   const channel = await client.channels.fetch(channelId);
 
   if (channel?.isTextBased() && channel instanceof TextChannel) {
     channel.send(message);
+    return res.status(201).json({ 
+      success: true, 
+      message: 'Message sent!' 
+    });
   } else {
-    console.error('Must be a Text Channel.');
+    return res.status(500).json({ 
+      success: false, 
+      message: 'Server error' 
+    });
+  }
+})
+
+// @ts-ignore
+app.post('/api/send-direct-message', async (req: Request, res: Response) => {
+  try {
+    const { message, userId } = req.body;
+    const guild = client.guilds.cache.get(process.env.GUILD_ID!);
+    const member = await guild?.members.fetch(userId);
+    member?.send(message);
+
+    return res.status(201).json({ 
+      success: true, 
+      message: 'Message sent!' 
+    });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({ 
+      success: false, 
+      message: error instanceof Error ? 'Server error' + error.message : 'Unknown server error'
+    });
   }
 })
 
