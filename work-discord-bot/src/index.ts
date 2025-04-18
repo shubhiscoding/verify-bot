@@ -122,7 +122,7 @@ client.once(Events.ClientReady, async () => {
     
     console.log('Successfully reloaded application (/) commands.');
 
-    // setInterval(checkAllBalances, 15 * 1000); // Run every 15 seconds (for testing, adjust as needed)
+    setInterval(checkAllBalances, 15 * 1000); // Run every 15 seconds (for testing, adjust as needed)
   } catch (error) {
     console.error(error);
   }
