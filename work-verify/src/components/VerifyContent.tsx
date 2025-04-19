@@ -1,49 +1,62 @@
-'use client';
+"use client";
 
 import { useWallet, useConnection } from "@solana/wallet-adapter-react";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
-import { useSearchParams } from 'next/navigation';
-import { VersionedTransaction, LAMPORTS_PER_SOL } from '@solana/web3.js';
-import axios from 'axios';
-import { toast, ToastContainer } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
-import { Buffer } from 'buffer';
-import { SOL_MINT, JUPITER_QUOTE_API, JUPITER_SWAP_API , DISCORD_API_URL } from '@/utils/config';
-import { TokenBalance, SignatureData, QuoteResponse, SwapResponse } from "@/utils/types";
+import { useSearchParams } from "next/navigation";
+import { VersionedTransaction, LAMPORTS_PER_SOL } from "@solana/web3.js";
+import axios from "axios";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import { Buffer } from "buffer";
+import {
+  SOL_MINT,
+  JUPITER_QUOTE_API,
+  JUPITER_SWAP_API,
+  DISCORD_API_URL,
+} from "@/utils/config";
+import {
+  TokenBalance,
+  SignatureData,
+  QuoteResponse,
+  SwapResponse,
+  ServerVerificationConfig,
+} from "@/utils/types";
 
 if (!DISCORD_API_URL) {
-    console.error("FATAL ERROR: NEXT_PUBLIC_VERIFY_API_ENDPOINT environment variable is not set!");
+  console.error(
+    "FATAL ERROR: NEXT_PUBLIC_VERIFY_API_ENDPOINT environment variable is not set!"
+  );
 }
 
-if (typeof window !== 'undefined' && typeof window.Buffer === 'undefined') {
+if (typeof window !== "undefined" && typeof window.Buffer === "undefined") {
   window.Buffer = Buffer;
-}
-
-interface ServerVerificationConfig {
-  tokenAddress: string;
-  requiredBalance: string;
-  tokenSymbol?: string;
-  tokenDecimals: number;
-  serverName?: string;
 }
 
 export default function VerifyContent() {
   const { connection } = useConnection();
   const { publicKey, connected, signMessage, sendTransaction } = useWallet();
   const searchParams = useSearchParams();
-  const verificationCode = searchParams.get('code');
+  const verificationCode = searchParams.get("code");
 
-  const [serverConfig, setServerConfig] = useState<ServerVerificationConfig | null>(null);
+  const [serverConfig, setServerConfig] =
+    useState<ServerVerificationConfig | null>(null);
   const [loadingConfig, setLoadingConfig] = useState(true);
   const [configError, setConfigError] = useState<string | null>(null);
 
   const [tokenBalance, setTokenBalance] = useState<TokenBalance | null>(null);
   const [loadingBalance, setLoadingBalance] = useState(false);
-  const [verificationError, setVerificationError] = useState<string | null>(null);
+  const [verificationError, setVerificationError] = useState<string | null>(
+    null
+  );
   const [verifying, setVerifying] = useState(false);
-  const [verificationResult, setVerificationResult] = useState<{ success: boolean; message: string } | null>(null);
-  const [signatureData, setSignatureData] = useState<SignatureData | null>(null);
+  const [verificationResult, setVerificationResult] = useState<{
+    success: boolean;
+    message: string;
+  } | null>(null);
+  const [signatureData, setSignatureData] = useState<SignatureData | null>(
+    null
+  );
   const [signingMessage, setSigningMessage] = useState(false);
   const isFetchingBalanceRef = useRef(false);
 
@@ -73,38 +86,65 @@ export default function VerifyContent() {
       setLoadingConfig(true);
       setConfigError(null);
       setServerConfig(null);
-      console.log(`[VerifyContent] Attempting to fetch context for code: ${verificationCode.substring(0, 6)}...`);
+      console.log(
+        `[VerifyContent] Attempting to fetch context for code: ${verificationCode.substring(
+          0,
+          6
+        )}...`
+      );
 
       try {
         const fetchUrl = `${DISCORD_API_URL}/verification-context?code=${verificationCode}`;
         const response = await fetch(fetchUrl);
-        console.log(`[VerifyContent] Fetch response status: ${response.status}`);
+        console.log(
+          `[VerifyContent] Fetch response status: ${response.status}`
+        );
 
         let data;
         try {
-            data = await response.json();
+          data = await response.json();
         } catch (jsonError) {
-            console.error("[VerifyContent] Failed to parse JSON response:", jsonError);
-            if (!response.ok) {
-                 throw new Error(`HTTP Error: ${response.status} - ${response.statusText}. Response body not valid JSON.`);
-            } else {
-                 throw new Error("Received non-JSON response from server.");
-            }
+          console.error(
+            "[VerifyContent] Failed to parse JSON response:",
+            jsonError
+          );
+          if (!response.ok) {
+            throw new Error(
+              `HTTP Error: ${response.status} - ${response.statusText}. Response body not valid JSON.`
+            );
+          } else {
+            throw new Error("Received non-JSON response from server.");
+          }
         }
 
         if (!response.ok) {
-          throw new Error(data.message || `Error fetching config: ${response.status} - ${response.statusText}`);
+          throw new Error(
+            data.message ||
+              `Error fetching config: ${response.status} - ${response.statusText}`
+          );
         }
 
         if (!data.success || !data.context) {
-          console.error("[VerifyContent] Invalid data structure received:", data);
-          throw new Error(data.message || "Invalid context data received from server.");
+          console.error(
+            "[VerifyContent] Invalid data structure received:",
+            data
+          );
+          throw new Error(
+            data.message || "Invalid context data received from server."
+          );
         }
 
         const context = data.context;
 
-        if (!context.tokenAddress || context.requiredBalance === undefined || context.tokenDecimals === undefined) {
-          console.error("[VerifyContent] Incomplete context received:", context);
+        if (
+          !context.tokenAddress ||
+          context.requiredBalance === undefined ||
+          context.tokenDecimals === undefined
+        ) {
+          console.error(
+            "[VerifyContent] Incomplete context received:",
+            context
+          );
           throw new Error("Incomplete configuration received from server.");
         }
 
@@ -117,10 +157,13 @@ export default function VerifyContent() {
         };
 
         setServerConfig(fetchedConfig);
-
       } catch (err) {
-        console.error("[VerifyContent] Configuration fetch/process error:", err);
-        const message = err instanceof Error ? err.message : "Failed to load configuration.";
+        console.error(
+          "[VerifyContent] Configuration fetch/process error:",
+          err
+        );
+        const message =
+          err instanceof Error ? err.message : "Failed to load configuration.";
         setConfigError(message);
         setServerConfig(null);
       } finally {
@@ -132,51 +175,89 @@ export default function VerifyContent() {
   }, [verificationCode]);
 
   // Format wallet address (shortened)
-  const formatWalletAddress = (address: string): string => `${address.slice(0, 4)}...${address.slice(-4)}`;
+  const formatWalletAddress = (address: string): string =>
+    `${address.slice(0, 4)}...${address.slice(-4)}`;
 
   // Format lamports to SOL string
   const formatSolAmount = (lamports: string | number | undefined): string => {
-    if (lamports === undefined || lamports === null) return '...';
+    if (lamports === undefined || lamports === null) return "...";
     try {
-        const amountNum = Number(String(lamports));
-        if (isNaN(amountNum)) return 'NaN';
-        return (amountNum / LAMPORTS_PER_SOL).toFixed(6);
-    } catch (e) { console.error("Error formatting SOL amount:", lamports, e); return 'Err'; }
+      const amountNum = Number(String(lamports));
+      if (isNaN(amountNum)) return "NaN";
+      return (amountNum / LAMPORTS_PER_SOL).toFixed(6);
+    } catch (e) {
+      console.error("Error formatting SOL amount:", lamports, e);
+      return "Err";
+    }
   };
 
   // Format required token balance based on decimals
-  const formatRequiredBalance = (config: ServerVerificationConfig | null): string => {
-     if (!config) return '...';
-     try {
-         const requiredRawNum = Number(config.requiredBalance);
-         if (isNaN(requiredRawNum)) return "NaN";
-         const divisor = Math.pow(10, config.tokenDecimals);
-         const uiAmount = requiredRawNum / divisor;
-         return uiAmount.toLocaleString(undefined, { maximumFractionDigits: config.tokenDecimals });
-     } catch(e) { console.error("Error formatting required balance:", config.requiredBalance, e); return "Error"; }
-   };
+  const formatRequiredBalance = (
+    config: ServerVerificationConfig | null
+  ): string => {
+    if (!config) return "...";
+    try {
+      const requiredRawNum = Number(config.requiredBalance);
+      if (isNaN(requiredRawNum)) return "NaN";
+      const divisor = Math.pow(10, config.tokenDecimals);
+      const uiAmount = requiredRawNum / divisor;
+      return uiAmount.toLocaleString(undefined, {
+        maximumFractionDigits: config.tokenDecimals,
+      });
+    } catch (e) {
+      console.error(
+        "Error formatting required balance:",
+        config.requiredBalance,
+        e
+      );
+      return "Error";
+    }
+  };
 
   // Fetch user's token balance for the required token
   const fetchTokenBalance = useCallback(async () => {
-    if (isFetchingBalanceRef.current || !publicKey || !connected || !connection || !serverConfig) return;
-    isFetchingBalanceRef.current = true; setLoadingBalance(true); setVerificationError(null); setTokenBalance(null);
+    if (
+      isFetchingBalanceRef.current ||
+      !publicKey ||
+      !connected ||
+      !connection ||
+      !serverConfig
+    )
+      return;
+    isFetchingBalanceRef.current = true;
+    setLoadingBalance(true);
+    setVerificationError(null);
+    setTokenBalance(null);
     try {
-      const accounts = await connection.getParsedTokenAccountsByOwner(publicKey, { programId: TOKEN_PROGRAM_ID });
-      const specificTokenAccount = accounts.value.find( (account) => account.account.data.parsed.info.mint === serverConfig.tokenAddress );
+      const accounts = await connection.getParsedTokenAccountsByOwner(
+        publicKey,
+        { programId: TOKEN_PROGRAM_ID }
+      );
+      const specificTokenAccount = accounts.value.find(
+        (account) =>
+          account.account.data.parsed.info.mint === serverConfig.tokenAddress
+      );
       if (specificTokenAccount) {
-        const parsedInfo = specificTokenAccount.account.data.parsed.info; const decimals = parsedInfo.tokenAmount.decimals;
-        const fetchedBalance: TokenBalance = { mint: parsedInfo.mint, amount: parsedInfo.tokenAmount.uiAmount, decimals: decimals, lamports: parsedInfo.tokenAmount.amount };
+        const parsedInfo = specificTokenAccount.account.data.parsed.info;
+        const decimals = parsedInfo.tokenAmount.decimals;
+        const fetchedBalance: TokenBalance = {
+          mint: parsedInfo.mint,
+          amount: parsedInfo.tokenAmount.uiAmount,
+          decimals: decimals,
+          lamports: parsedInfo.tokenAmount.amount,
+        };
         setTokenBalance(fetchedBalance);
       } else {
         setTokenBalance(null);
-        setVerificationError(`Required ${serverConfig.tokenSymbol || 'token'} not found in wallet.`);
+        setVerificationError(
+          `Required ${serverConfig.tokenSymbol || "token"} not found in wallet.`
+        );
       }
     } catch (err) {
       console.error("Token balance fetch error:", err);
       setVerificationError("Error fetching token balance");
       setTokenBalance(null);
-    }
-    finally {
+    } finally {
       isFetchingBalanceRef.current = false;
       setLoadingBalance(false);
     }
@@ -199,30 +280,44 @@ export default function VerifyContent() {
 
   // Sign verification message
   const handleSignMessage = async () => {
-    if (!publicKey || !verificationCode || !signMessage || !serverConfig || !tokenBalance) {
+    if (
+      !publicKey ||
+      !verificationCode ||
+      !signMessage ||
+      !serverConfig ||
+      !tokenBalance
+    ) {
       toast.error("Cannot sign message: Missing required context.");
       return;
     }
     try {
-        const requiredLamportsNum = Number(serverConfig.requiredBalance);
-        const currentLamportsNum = Number(tokenBalance.lamports);
-        if (isNaN(requiredLamportsNum) || isNaN(currentLamportsNum)) {
-          toast.error("Cannot sign: Invalid balance values."); return;
-        }
-        if (currentLamportsNum < requiredLamportsNum) {
-          setVerificationError("Cannot sign: Insufficient token balance.");
-          toast.error("Cannot sign: Insufficient token balance."); return;
-        }
+      const requiredLamportsNum = Number(serverConfig.requiredBalance);
+      const currentLamportsNum = Number(tokenBalance.lamports);
+      if (isNaN(requiredLamportsNum) || isNaN(currentLamportsNum)) {
+        toast.error("Cannot sign: Invalid balance values.");
+        return;
+      }
+      if (currentLamportsNum < requiredLamportsNum) {
+        setVerificationError("Cannot sign: Insufficient token balance.");
+        toast.error("Cannot sign: Insufficient token balance.");
+        return;
+      }
 
-        setSigningMessage(true);
-        setVerificationError(null);
-        const messageString = `Sign this message to verify wallet ownership for Discord role verification. Code: ${verificationCode.substring(0, 8)}...`;
-        const encodedMessage = new TextEncoder().encode(messageString);
-        const signature = await signMessage(encodedMessage);
-        setSignatureData({ signature: Buffer.from(signature).toString('base64'), message: messageString });
-        toast.success("Message signed successfully!");
+      setSigningMessage(true);
+      setVerificationError(null);
+      const messageString = `Sign this message to verify wallet ownership for Discord role verification. Code: ${verificationCode.substring(
+        0,
+        8
+      )}...`;
+      const encodedMessage = new TextEncoder().encode(messageString);
+      const signature = await signMessage(encodedMessage);
+      setSignatureData({
+        signature: Buffer.from(signature).toString("base64"),
+        message: messageString,
+      });
+      toast.success("Message signed successfully!");
     } catch (err) {
-      console.error('Message signing error:', err);
+      console.error("Message signing error:", err);
       setVerificationError("Message signing failed.");
       toast.error("Message signing failed. Please try again.");
       setSignatureData(null);
@@ -233,46 +328,65 @@ export default function VerifyContent() {
 
   // Send verification data to backend API
   const verifyWallet = useCallback(async () => {
-    if (!verificationCode || !publicKey || !tokenBalance || !signatureData || !serverConfig) {
-      console.error("Verification prerequisites missing."); return;
+    if (
+      !verificationCode ||
+      !publicKey ||
+      !tokenBalance ||
+      !signatureData ||
+      !serverConfig
+    ) {
+      console.error("Verification prerequisites missing.");
+      return;
     }
     if (!DISCORD_API_URL) {
-      toast.error("Verification failed: API URL is not configured."); return;
+      toast.error("Verification failed: API URL is not configured.");
+      return;
     }
     try {
-        const requiredLamportsNum = Number(serverConfig.requiredBalance);
-        const currentLamportsNum = Number(tokenBalance.lamports);
-        if (isNaN(requiredLamportsNum) || isNaN(currentLamportsNum)) {
-          toast.error("Verification failed due to invalid balance values."); setSignatureData(null); return;
-        }
-        if (currentLamportsNum < requiredLamportsNum) {
-          setVerificationError("Insufficient balance for verification."); toast.error("Insufficient balance for verification."); setSignatureData(null); return;
-        }
+      const requiredLamportsNum = Number(serverConfig.requiredBalance);
+      const currentLamportsNum = Number(tokenBalance.lamports);
+      if (isNaN(requiredLamportsNum) || isNaN(currentLamportsNum)) {
+        toast.error("Verification failed due to invalid balance values.");
+        setSignatureData(null);
+        return;
+      }
+      if (currentLamportsNum < requiredLamportsNum) {
+        setVerificationError("Insufficient balance for verification.");
+        toast.error("Insufficient balance for verification.");
+        setSignatureData(null);
+        return;
+      }
 
-        setVerifying(true);
-        setVerificationError(null);
-        setVerificationResult(null);
-        toast.info("Verifying wallet with the server...");
-        const fetchUrl = `${DISCORD_API_URL}/verify-wallet`;
-        const response = await fetch(fetchUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            verificationCode,
-            walletAddress: publicKey.toString(),
-            signature: signatureData.signature,
-            message: signatureData.message
-          })
-        });
-        const result = await response.json();
-        if (!response.ok) {
-          throw new Error(result.message || "Verification request failed");
-        }
-        setVerificationResult({ success: true, message: result.message || "Verification successful!" });
-        toast.success(result.message || "Verification successful! 🎉");
+      setVerifying(true);
+      setVerificationError(null);
+      setVerificationResult(null);
+      toast.info("Verifying wallet with the server...");
+      const fetchUrl = `${DISCORD_API_URL}/verify-wallet`;
+      const response = await fetch(fetchUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          verificationCode,
+          walletAddress: publicKey.toString(),
+          signature: signatureData.signature,
+          message: signatureData.message,
+        }),
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.message || "Verification request failed");
+      }
+      setVerificationResult({
+        success: true,
+        message: result.message || "Verification successful!",
+      });
+      toast.success(result.message || "Verification successful! 🎉");
     } catch (err: unknown) {
       console.error("Wallet verification error:", err);
-      const message = err instanceof Error ? err.message : "An unknown error occurred during verification.";
+      const message =
+        err instanceof Error
+          ? err.message
+          : "An unknown error occurred during verification.";
       setVerificationResult({ success: false, message });
       toast.error(`Verification Failed: ${message}`);
       setSignatureData(null); // Reset signature on failure to allow retry if needed
@@ -283,45 +397,63 @@ export default function VerifyContent() {
 
   // Auto-trigger verification once message is signed and balance is sufficient
   useEffect(() => {
-     if (signatureData && tokenBalance && serverConfig) {
-       try {
-           const requiredLamportsNum = Number(serverConfig.requiredBalance);
-           const currentLamportsNum = Number(tokenBalance.lamports);
-           if (isNaN(requiredLamportsNum) || isNaN(currentLamportsNum)) return;
-           if (currentLamportsNum >= requiredLamportsNum && !verifying && !verificationResult) {
-               verifyWallet();
-           }
-       } catch (e) {
-         console.error("Error during auto-verification trigger:", e);
-       }
-     }
-  }, [signatureData, tokenBalance, serverConfig, verifying, verificationResult, verifyWallet]);
+    if (signatureData && tokenBalance && serverConfig) {
+      try {
+        const requiredLamportsNum = Number(serverConfig.requiredBalance);
+        const currentLamportsNum = Number(tokenBalance.lamports);
+        if (isNaN(requiredLamportsNum) || isNaN(currentLamportsNum)) return;
+        if (
+          currentLamportsNum >= requiredLamportsNum &&
+          !verifying &&
+          !verificationResult
+        ) {
+          verifyWallet();
+        }
+      } catch (e) {
+        console.error("Error during auto-verification trigger:", e);
+      }
+    }
+  }, [
+    signatureData,
+    tokenBalance,
+    serverConfig,
+    verifying,
+    verificationResult,
+    verifyWallet,
+  ]);
 
   // Fetch Jupiter quote if balance is insufficient
   const fetchQuote = useCallback(async (): Promise<QuoteResponse | null> => {
     if (!serverConfig || !publicKey) {
-      setQuoteError("Cannot fetch quote: Wallet not connected or configuration not loaded.");
+      setQuoteError(
+        "Cannot fetch quote: Wallet not connected or configuration not loaded."
+      );
       return null;
     }
     setQuoteLoading(true);
     setQuoteError(null);
     try {
-      const platformFeeBps = process.env.NEXT_PUBLIC_PLATFORM_FEES ? parseInt(process.env.NEXT_PUBLIC_PLATFORM_FEES, 10) : 0;
+      const platformFeeBps = process.env.NEXT_PUBLIC_PLATFORM_FEES
+        ? parseInt(process.env.NEXT_PUBLIC_PLATFORM_FEES, 10)
+        : 0;
       const params = {
         inputMint: SOL_MINT,
         outputMint: serverConfig.tokenAddress,
         amount: serverConfig.requiredBalance, // Amount of output token needed
         slippageBps: 100, // 0.1% slippage
-        swapMode: 'ExactOut',
+        swapMode: "ExactOut",
         onlyDirectRoutes: false,
-        ...(platformFeeBps > 0 && { platformFeeBps: platformFeeBps })
+        ...(platformFeeBps > 0 && { platformFeeBps: platformFeeBps }),
       };
-      const response = await axios.get<QuoteResponse>(JUPITER_QUOTE_API, { params });
+      const response = await axios.get<QuoteResponse>(JUPITER_QUOTE_API, {
+        params,
+      });
       setQuoteData(response.data);
       return response.data;
     } catch (err: unknown) {
-      console.error('Error fetching Jupiter quote:', err);
-      const message = err instanceof Error ? err.message : 'Failed to fetch swap quote.';
+      console.error("Error fetching Jupiter quote:", err);
+      const message =
+        err instanceof Error ? err.message : "Failed to fetch swap quote.";
       setQuoteError(message);
       toast.error(`Quote Error: ${message}`);
       setQuoteData(null);
@@ -332,9 +464,11 @@ export default function VerifyContent() {
   }, [publicKey, serverConfig]);
 
   // Get swap transaction details from Jupiter API
-  const getSwapTransaction = async (quote: QuoteResponse): Promise<SwapResponse | null> => {
+  const getSwapTransaction = async (
+    quote: QuoteResponse
+  ): Promise<SwapResponse | null> => {
     if (!publicKey) {
-      toast.error('Cannot prepare swap: Wallet not connected.');
+      toast.error("Cannot prepare swap: Wallet not connected.");
       return null;
     }
     try {
@@ -344,15 +478,22 @@ export default function VerifyContent() {
         userPublicKey: publicKey.toString(),
         wrapAndUnwrapSol: true,
         prioritizationFeeLamports: "auto", // Let Jupiter decide priority fee
-        ...(feeReceiver && { feeAccount: feeReceiver })
+        ...(feeReceiver && { feeAccount: feeReceiver }),
       };
-      const response = await axios.post<SwapResponse>(JUPITER_SWAP_API, payload, {
-        headers: { 'Content-Type': 'application/json' }
-      });
+      const response = await axios.post<SwapResponse>(
+        JUPITER_SWAP_API,
+        payload,
+        {
+          headers: { "Content-Type": "application/json" },
+        }
+      );
       return response.data;
     } catch (err: unknown) {
-      console.error('Error getting swap transaction from Jupiter:', err);
-      const message = err instanceof Error ? err.message : 'Failed to prepare swap transaction.';
+      console.error("Error getting swap transaction from Jupiter:", err);
+      const message =
+        err instanceof Error
+          ? err.message
+          : "Failed to prepare swap transaction.";
       toast.error(`Swap Error: ${message}`);
       return null;
     }
@@ -361,15 +502,19 @@ export default function VerifyContent() {
   // Execute the swap transaction
   const executeSwap = async () => {
     if (!publicKey || !sendTransaction || !connection || !serverConfig) {
-      toast.error('Cannot execute swap: Wallet not connected, config missing, or transaction function unavailable.');
+      toast.error(
+        "Cannot execute swap: Wallet not connected, config missing, or transaction function unavailable."
+      );
       return;
     }
     let currentQuote = quoteData;
     if (!currentQuote || quoteError) {
-      toast.info('Fetching latest price quote...');
+      toast.info("Fetching latest price quote...");
       const freshQuote = await fetchQuote();
       if (!freshQuote) {
-        toast.error('Could not get a valid price quote to proceed with the swap.');
+        toast.error(
+          "Could not get a valid price quote to proceed with the swap."
+        );
         return;
       }
       currentQuote = freshQuote;
@@ -381,18 +526,21 @@ export default function VerifyContent() {
     let signature: string | null = null; // To store signature for potential error messages
 
     try {
-      toast.info('Preparing swap transaction...');
+      toast.info("Preparing swap transaction...");
       const swapData = await getSwapTransaction(currentQuote);
       if (!swapData || !swapData.swapTransaction) {
-        toast.error('Failed to get swap transaction data.');
+        toast.error("Failed to get swap transaction data.");
         setSwapLoading(false);
         return;
       }
 
-      const swapTransactionBuf = Buffer.from(swapData.swapTransaction, 'base64');
+      const swapTransactionBuf = Buffer.from(
+        swapData.swapTransaction,
+        "base64"
+      );
       const transaction = VersionedTransaction.deserialize(swapTransactionBuf);
 
-      toast.info('Please approve the transaction in your wallet...');
+      toast.info("Please approve the transaction in your wallet...");
       signature = await sendTransaction(transaction, connection);
       setSwapTxId(signature); // Store signature immediately
 
@@ -424,65 +572,79 @@ export default function VerifyContent() {
           {
             signature,
             blockhash: transaction.message.recentBlockhash,
-            lastValidBlockHeight: swapData.lastValidBlockHeight
+            lastValidBlockHeight: swapData.lastValidBlockHeight,
           },
-          'confirmed' // Commitment level
+          "confirmed" // Commitment level
         );
 
         toast.dismiss(confirmToastId); // Close the persistent toast
 
         if (confirmationStatus.value.err) {
-          throw new Error(`Transaction failed to confirm: ${JSON.stringify(confirmationStatus.value.err)}`);
+          throw new Error(
+            `Transaction failed to confirm: ${JSON.stringify(
+              confirmationStatus.value.err
+            )}`
+          );
         }
-
       } catch (confirmError: any) {
-         toast.dismiss(confirmToastId); // Close the persistent toast on error too
-         console.error('Confirmation Error:', confirmError);
+        toast.dismiss(confirmToastId); // Close the persistent toast on error too
+        console.error("Confirmation Error:", confirmError);
 
-         if (confirmError.message.includes('timed out') || confirmError.message.includes('timeout')) {
-             toast.error(
-              () => (
-                <div>
-                  Confirmation timed out. It might still succeed.
-                  <br />
-                  <a
-                    href={`https://solscan.io/tx/${signature}?cluster=mainnet-beta`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-500 underline hover:text-blue-700"
-                  >
-                    Check status on Solscan
-                  </a>
-                </div>
-              ), { autoClose: 8000}
-             );
-             setSwapSuccess(false); // Assume failure on timeout for UI
-         } else {
-             toast.error(`Transaction Confirmation Failed: ${confirmError.message}`);
-             setSwapSuccess(false);
-         }
-         setSwapLoading(false);
-         return; // Exit executeSwap
+        if (
+          confirmError.message.includes("timed out") ||
+          confirmError.message.includes("timeout")
+        ) {
+          toast.error(
+            () => (
+              <div>
+                Confirmation timed out. It might still succeed.
+                <br />
+                <a
+                  href={`https://solscan.io/tx/${signature}?cluster=mainnet-beta`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-500 underline hover:text-blue-700"
+                >
+                  Check status on Solscan
+                </a>
+              </div>
+            ),
+            { autoClose: 8000 }
+          );
+          setSwapSuccess(false); // Assume failure on timeout for UI
+        } else {
+          toast.error(
+            `Transaction Confirmation Failed: ${confirmError.message}`
+          );
+          setSwapSuccess(false);
+        }
+        setSwapLoading(false);
+        return; // Exit executeSwap
       }
 
       // If confirmation succeeded
-      console.log('Swap transaction confirmed:', signature);
+      console.log("Swap transaction confirmed:", signature);
       setSwapSuccess(true);
-      toast.success('Swap successful! Refreshing balance...');
-      await new Promise(resolve => setTimeout(resolve, 1500)); // Short delay
+      toast.success("Swap successful! Refreshing balance...");
+      await new Promise((resolve) => setTimeout(resolve, 1500)); // Short delay
       fetchTokenBalance(); // Refresh balance
-
     } catch (err: unknown) {
       // Catch errors from sendTransaction or earlier steps
-      if (signature) { toast.dismiss(`confirm-${signature}`); } // Dismiss toast if signature was generated
+      if (signature) {
+        toast.dismiss(`confirm-${signature}`);
+      } // Dismiss toast if signature was generated
 
-      console.error('Swap execution error:', err);
-      let errorMessage = 'Swap failed.';
-      if (typeof err === 'object' && err !== null && 'message' in err) {
-          const msg = String(err.message).toLowerCase();
-          if (msg.includes('user rejected')) { errorMessage = 'Transaction rejected in wallet.'; }
-          else if (msg.includes('insufficient lamports')) { errorMessage = 'Insufficient SOL balance for transaction.'; }
-          else { errorMessage = `Swap Error: ${err.message}`; } // Include specific error
+      console.error("Swap execution error:", err);
+      let errorMessage = "Swap failed.";
+      if (typeof err === "object" && err !== null && "message" in err) {
+        const msg = String(err.message).toLowerCase();
+        if (msg.includes("user rejected")) {
+          errorMessage = "Transaction rejected in wallet.";
+        } else if (msg.includes("insufficient lamports")) {
+          errorMessage = "Insufficient SOL balance for transaction.";
+        } else {
+          errorMessage = `Swap Error: ${err.message}`;
+        } // Include specific error
       }
       toast.error(errorMessage);
       setSwapSuccess(false);
@@ -495,33 +657,49 @@ export default function VerifyContent() {
   const SignMessageButton = () => {
     if (!serverConfig || !tokenBalance) return null;
     try {
-        const requiredLamportsNum = Number(serverConfig.requiredBalance);
-        const currentLamportsNum = Number(tokenBalance.lamports);
-        if (isNaN(requiredLamportsNum) || isNaN(currentLamportsNum)) return null;
+      const requiredLamportsNum = Number(serverConfig.requiredBalance);
+      const currentLamportsNum = Number(tokenBalance.lamports);
+      if (isNaN(requiredLamportsNum) || isNaN(currentLamportsNum)) return null;
 
-        const shouldShow = currentLamportsNum >= requiredLamportsNum && !signatureData && !signingMessage && !verifying && !verificationResult?.success;
-        const recentlyCompletedSwap = swapSuccess && shouldShow; // Highlight if swap just finished
+      const shouldShow =
+        currentLamportsNum >= requiredLamportsNum &&
+        !signatureData &&
+        !signingMessage &&
+        !verifying &&
+        !verificationResult?.success;
+      const recentlyCompletedSwap = swapSuccess && shouldShow; // Highlight if swap just finished
 
-        if (!shouldShow) return null;
+      if (!shouldShow) return null;
 
-        return (
-          <div className={`mt-6 ${recentlyCompletedSwap ? 'animate-pulse' : ''}`}>
-            {recentlyCompletedSwap && <p className="text-green-600 text-sm font-semibold mb-2 text-center">Swap successful! Please sign the message.</p>}
-            <button
-              onClick={handleSignMessage}
-              disabled={signingMessage || verifying}
-              className={`w-full px-4 py-3 rounded text-white font-semibold transition duration-200 ${
-                (signingMessage || verifying) ? 'bg-gray-400 cursor-not-allowed'
-                : recentlyCompletedSwap ? 'bg-green-600 hover:bg-green-700'
-                : 'bg-blue-600 hover:bg-blue-700'
-              }`}
-            >
-              {signingMessage ? 'Waiting for Signature...' : verifying ? 'Processing...' : 'Sign Message to Verify'}
-            </button>
-          </div>
-        );
+      return (
+        <div className={`mt-6 ${recentlyCompletedSwap ? "animate-pulse" : ""}`}>
+          {recentlyCompletedSwap && (
+            <p className="text-green-600 text-sm font-semibold mb-2 text-center">
+              Swap successful! Please sign the message.
+            </p>
+          )}
+          <button
+            onClick={handleSignMessage}
+            disabled={signingMessage || verifying}
+            className={`w-full px-4 py-3 rounded text-white font-semibold transition duration-200 ${
+              signingMessage || verifying
+                ? "bg-gray-400 cursor-not-allowed"
+                : recentlyCompletedSwap
+                ? "bg-green-600 hover:bg-green-700"
+                : "bg-blue-600 hover:bg-blue-700"
+            }`}
+          >
+            {signingMessage
+              ? "Waiting for Signature..."
+              : verifying
+              ? "Processing..."
+              : "Sign Message to Verify"}
+          </button>
+        </div>
+      );
     } catch (e) {
-      console.error("Error rendering SignMessageButton:", e); return null;
+      console.error("Error rendering SignMessageButton:", e);
+      return null;
     }
   };
 
@@ -530,11 +708,14 @@ export default function VerifyContent() {
     if (!connected || !publicKey || !serverConfig) return null;
     return (
       <button
-        onClick={() => { toast.info('Refreshing balance...'); fetchTokenBalance(); }}
+        onClick={() => {
+          toast.info("Refreshing balance...");
+          fetchTokenBalance();
+        }}
         disabled={loadingBalance || isFetchingBalanceRef.current}
         className="text-xs text-blue-600 hover:text-blue-800 underline mt-1 disabled:text-gray-400 disabled:cursor-not-allowed"
       >
-        {loadingBalance ? 'Refreshing...' : 'Refresh balance'}
+        {loadingBalance ? "Refreshing..." : "Refresh balance"}
       </button>
     );
   };
@@ -543,139 +724,287 @@ export default function VerifyContent() {
   useEffect(() => {
     let intervalId: NodeJS.Timeout | null = null;
     try {
-        const requiredLamportsNum = serverConfig ? Number(serverConfig.requiredBalance) : NaN;
-        const currentLamportsNum = tokenBalance ? Number(tokenBalance.lamports) : NaN;
-        if (isNaN(requiredLamportsNum)) return;
+      const requiredLamportsNum = serverConfig
+        ? Number(serverConfig.requiredBalance)
+        : NaN;
+      const currentLamportsNum = tokenBalance
+        ? Number(tokenBalance.lamports)
+        : NaN;
+      if (isNaN(requiredLamportsNum)) return;
 
-        const shouldFetchQuote = connected && publicKey && serverConfig && (isNaN(currentLamportsNum) || currentLamportsNum < requiredLamportsNum);
+      const shouldFetchQuote =
+        connected &&
+        publicKey &&
+        serverConfig &&
+        (isNaN(currentLamportsNum) || currentLamportsNum < requiredLamportsNum);
 
-        if (shouldFetchQuote) {
-          if (!quoteData && !quoteLoading && !quoteError) {
-              fetchQuote(); // Initial fetch
-          }
-          intervalId = setInterval(fetchQuote, 30000); // Refresh quote every 30s
-        } else {
-          setQuoteData(null); // Clear quote data if balance is sufficient or disconnected
-          setQuoteError(null);
+      if (shouldFetchQuote) {
+        if (!quoteData && !quoteLoading && !quoteError) {
+          fetchQuote(); // Initial fetch
         }
-    } catch (e) { console.error("Error setting up quote refresh interval:", e); }
+        intervalId = setInterval(fetchQuote, 30000); // Refresh quote every 30s
+      } else {
+        setQuoteData(null); // Clear quote data if balance is sufficient or disconnected
+        setQuoteError(null);
+      }
+    } catch (e) {
+      console.error("Error setting up quote refresh interval:", e);
+    }
 
-    return () => { if (intervalId) clearInterval(intervalId); };
-  }, [connected, publicKey, serverConfig, tokenBalance, fetchQuote, quoteData, quoteLoading, quoteError]);
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [
+    connected,
+    publicKey,
+    serverConfig,
+    tokenBalance,
+    fetchQuote,
+    quoteData,
+    quoteLoading,
+    quoteError,
+  ]);
 
   // --- Render Logic ---
 
   if (!verificationCode) {
     return (
       <div className="w-full max-w-md bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-        <p className="font-bold">Invalid Link</p><p>Verification code missing.</p>
+        <p className="font-bold">Invalid Link</p>
+        <p>Verification code missing.</p>
       </div>
     );
   }
 
   if (loadingConfig) {
-    return <div className="w-full max-w-md text-center py-10"><p className="text-gray-600 animate-pulse">Loading requirements...</p></div>;
+    return (
+      <div className="w-full max-w-md text-center py-10">
+        <p className="text-gray-600 animate-pulse">Loading requirements...</p>
+      </div>
+    );
   }
 
   if (configError || !serverConfig) {
     return (
       <div className="w-full max-w-md bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-        <p className="font-bold">Error Loading Config</p><p>{configError || "Failed to fetch verification config."}</p>
-        <p className="text-sm mt-2">Please try the link again or contact support.</p>
+        <p className="font-bold">Error Loading Config</p>
+        <p>{configError || "Failed to fetch verification config."}</p>
+        <p className="text-sm mt-2">
+          Please try the link again or contact support.
+        </p>
       </div>
     );
   }
 
-  const tokenSymbol = serverConfig.tokenSymbol || 'tokens';
+  const tokenSymbol = serverConfig.tokenSymbol || "tokens";
   const requiredBalanceFormatted = formatRequiredBalance(serverConfig);
-  const currentBalanceLamportsNum = tokenBalance ? Number(tokenBalance.lamports) : NaN;
+  const currentBalanceLamportsNum = tokenBalance
+    ? Number(tokenBalance.lamports)
+    : NaN;
   const requiredBalanceLamportsNum = Number(serverConfig.requiredBalance);
-  const hasSufficientBalance = !isNaN(currentBalanceLamportsNum) && !isNaN(requiredBalanceLamportsNum) && currentBalanceLamportsNum >= requiredBalanceLamportsNum;
+  const hasSufficientBalance =
+    !isNaN(currentBalanceLamportsNum) &&
+    !isNaN(requiredBalanceLamportsNum) &&
+    currentBalanceLamportsNum >= requiredBalanceLamportsNum;
 
-  const btnClass = (disabled: boolean) => `w-full mt-4 px-4 py-2 rounded text-white font-semibold transition duration-200 ${
-    disabled ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'
-  }`;
+  const btnClass = (disabled: boolean) =>
+    `w-full mt-4 px-4 py-2 rounded text-white font-semibold transition duration-200 ${
+      disabled
+        ? "bg-gray-400 cursor-not-allowed"
+        : "bg-blue-600 hover:bg-blue-700"
+    }`;
 
   return (
     <div className="w-full max-w-md text-black">
-      <ToastContainer position="top-left" autoClose={4000} hideProgressBar={false} newestOnTop={false} closeOnClick rtl={false} pauseOnFocusLoss draggable pauseOnHover theme="light" />
+      <ToastContainer
+        position="top-left"
+        autoClose={4000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="light"
+      />
 
       <div className="text-center mb-8">
-        <h1 className="text-2xl font-bold text-white">Discord Role Verification</h1>
-        {serverConfig.serverName && <p className="text-lg text-gray-700">For Server: {serverConfig.serverName}</p>}
-        <p className="mt-2 text-gray-600">Verify holding at least {requiredBalanceFormatted} ${tokenSymbol}.</p>
+        <h1 className="text-2xl font-bold text-white">
+          Discord Role Verification
+        </h1>
+        {serverConfig.serverName && (
+          <p className="text-lg text-gray-700">
+            For Server: {serverConfig.serverName}
+          </p>
+        )}
+        <p className="mt-2 text-gray-600">
+          Verify holding at least {requiredBalanceFormatted} ${tokenSymbol}.
+        </p>
       </div>
 
       {!connected || !publicKey ? (
         <div className="text-center p-8 border-2 border-dashed border-gray-300 rounded-lg">
-          <h2 className="text-xl font-semibold mb-4 text-white">Connect Wallet</h2>
-          <p className="mb-6 text-gray-500">Connect your Solana wallet (top right) to proceed.</p>
+          <h2 className="text-xl font-semibold mb-4 text-white">
+            Connect Wallet
+          </h2>
+          <p className="mb-6 text-gray-500">
+            Connect your Solana wallet (top right) to proceed.
+          </p>
         </div>
       ) : (
         <>
           {verificationResult ? (
-            <div className={`p-6 rounded-lg mb-6 ${verificationResult.success ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-              <h2 className="text-xl font-bold mb-2">{verificationResult.success ? 'Verification Successful! 🎉' : 'Verification Failed'}</h2>
+            <div
+              className={`p-6 rounded-lg mb-6 ${
+                verificationResult.success
+                  ? "bg-green-100 text-green-700"
+                  : "bg-red-100 text-red-700"
+              }`}
+            >
+              <h2 className="text-xl font-bold mb-2">
+                {verificationResult.success
+                  ? "Verification Successful! 🎉"
+                  : "Verification Failed"}
+              </h2>
               <p>{verificationResult.message}</p>
-              {verificationResult.success && <p className="mt-4 text-sm">You can close this window.</p>}
-              {!verificationResult.success && tokenBalance && !hasSufficientBalance && (
-                <div className="mt-4 p-3 bg-orange-100 border border-orange-300 rounded text-orange-800">
-                  <p className="font-semibold">Insufficient balance.</p>
-                  <p className="text-sm">Current: {tokenBalance.amount.toLocaleString(undefined, { maximumFractionDigits: serverConfig.tokenDecimals })} / Required: {requiredBalanceFormatted} ${tokenSymbol}</p>
-                  <button onClick={executeSwap} disabled={swapLoading || quoteLoading || !quoteData} className={btnClass(swapLoading || quoteLoading || !quoteData)}>
-                    {swapLoading ? 'Purchasing...' : quoteLoading ? 'Getting Price...' : !quoteData ? 'Loading Price...' : `Buy ${requiredBalanceFormatted} ${tokenSymbol} (~${formatSolAmount(quoteData?.inAmount)} SOL)`}
-                  </button>
-                  {quoteError && <p className="text-xs text-red-600 mt-1">{quoteError}</p>}
-                </div>
+              {verificationResult.success && (
+                <p className="mt-4 text-sm">You can close this window.</p>
               )}
+              {!verificationResult.success &&
+                tokenBalance &&
+                !hasSufficientBalance && (
+                  <div className="mt-4 p-3 bg-orange-100 border border-orange-300 rounded text-orange-800">
+                    <p className="font-semibold">Insufficient balance.</p>
+                    <p className="text-sm">
+                      Current:{" "}
+                      {tokenBalance.amount.toLocaleString(undefined, {
+                        maximumFractionDigits: serverConfig.tokenDecimals,
+                      })}{" "}
+                      / Required: {requiredBalanceFormatted} ${tokenSymbol}
+                    </p>
+                    <button
+                      onClick={executeSwap}
+                      disabled={swapLoading || quoteLoading || !quoteData}
+                      className={btnClass(
+                        swapLoading || quoteLoading || !quoteData
+                      )}
+                    >
+                      {swapLoading
+                        ? "Purchasing..."
+                        : quoteLoading
+                        ? "Getting Price..."
+                        : !quoteData
+                        ? "Loading Price..."
+                        : `Buy ${requiredBalanceFormatted} ${tokenSymbol} (~${formatSolAmount(
+                            quoteData?.inAmount
+                          )} SOL)`}
+                    </button>
+                    {quoteError && (
+                      <p className="text-xs text-red-600 mt-1">{quoteError}</p>
+                    )}
+                  </div>
+                )}
             </div>
           ) : (
             <div className="bg-gray-50 p-6 rounded-lg shadow mb-6 border border-gray-200">
               <div className="flex justify-between items-center mb-4">
                 <h2 className="font-bold text-lg">Wallet Connected</h2>
-                <span className="text-sm text-gray-500 bg-gray-200 px-2 py-1 rounded">{formatWalletAddress(publicKey.toString())}</span>
+                <span className="text-sm text-gray-500 bg-gray-200 px-2 py-1 rounded">
+                  {formatWalletAddress(publicKey.toString())}
+                </span>
               </div>
               <div className="text-sm mb-4">
                 <p>Checking for token:</p>
-                <p className="text-xs mt-1 font-mono bg-gray-100 px-2 py-1 rounded border break-all">{serverConfig.tokenAddress} ({tokenSymbol})</p>
+                <p className="text-xs mt-1 font-mono bg-gray-100 px-2 py-1 rounded border break-all">
+                  {serverConfig.tokenAddress} ({tokenSymbol})
+                </p>
               </div>
 
               <div className="mt-4">
                 {loadingBalance ? (
-                  <div className="text-center py-4"><p className="animate-pulse">Loading token balance...</p></div>
+                  <div className="text-center py-4">
+                    <p className="animate-pulse">Loading token balance...</p>
+                  </div>
                 ) : tokenBalance ? (
                   <div className="p-4 bg-white rounded border border-gray-200">
                     <div className="flex justify-between items-center">
-                      <h3 className="font-semibold">Current ${tokenSymbol} Balance:</h3>
+                      <h3 className="font-semibold">
+                        Current ${tokenSymbol} Balance:
+                      </h3>
                       <span className="text-xl font-bold text-gray-900">
-                        {tokenBalance.amount.toLocaleString(undefined, { maximumFractionDigits: tokenBalance.decimals ?? serverConfig.tokenDecimals })}
+                        {tokenBalance.amount.toLocaleString(undefined, {
+                          maximumFractionDigits:
+                            tokenBalance.decimals ?? serverConfig.tokenDecimals,
+                        })}
                       </span>
                     </div>
                     <div className="mt-4 pt-3 border-t text-sm text-gray-600">
                       <div className="flex justify-between">
                         <span>Required Balance:</span>
-                        <span className="font-medium">{requiredBalanceFormatted}</span>
+                        <span className="font-medium">
+                          {requiredBalanceFormatted}
+                        </span>
                       </div>
-                      <div className="text-center mt-1"><BalanceRefresher /></div>
+                      <div className="text-center mt-1">
+                        <BalanceRefresher />
+                      </div>
                     </div>
 
                     <div className="mt-4">
                       {hasSufficientBalance ? (
-                        <div className={`p-3 rounded text-center text-sm ${signatureData ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'}`}>
-                          {verifying ? '✅ Verifying...' : signatureData ? '✅ Signature captured, verifying...' : signingMessage ? '✅ Awaiting signature...' : '✅ Balance sufficient! Ready to sign.'}
+                        <div
+                          className={`p-3 rounded text-center text-sm ${
+                            signatureData
+                              ? "bg-blue-100 text-blue-700"
+                              : "bg-green-100 text-green-700"
+                          }`}
+                        >
+                          {verifying
+                            ? "✅ Verifying..."
+                            : signatureData
+                            ? "✅ Signature captured, verifying..."
+                            : signingMessage
+                            ? "✅ Awaiting signature..."
+                            : "✅ Balance sufficient! Ready to sign."}
                         </div>
                       ) : (
                         <div className="bg-orange-100 text-orange-700 p-3 rounded text-center text-sm border border-orange-200">
                           <p className="font-semibold">Insufficient balance.</p>
                           <div className="mt-4">
-                            <button onClick={executeSwap} disabled={swapLoading || quoteLoading || !quoteData} className={btnClass(swapLoading || quoteLoading || !quoteData)}>
-                              {swapLoading ? 'Purchasing...' : quoteLoading ? 'Getting Price...' : !quoteData ? 'Loading Price...' : `Buy ${requiredBalanceFormatted} ${tokenSymbol} (~${formatSolAmount(quoteData?.inAmount)} SOL)`}
+                            <button
+                              onClick={executeSwap}
+                              disabled={
+                                swapLoading || quoteLoading || !quoteData
+                              }
+                              className={btnClass(
+                                swapLoading || quoteLoading || !quoteData
+                              )}
+                            >
+                              {swapLoading
+                                ? "Purchasing..."
+                                : quoteLoading
+                                ? "Getting Price..."
+                                : !quoteData
+                                ? "Loading Price..."
+                                : `Buy ${requiredBalanceFormatted} ${tokenSymbol} (~${formatSolAmount(
+                                    quoteData?.inAmount
+                                  )} SOL)`}
                             </button>
-                            {quoteError && <p className="text-xs text-red-600 mt-1">{quoteError}</p>}
+                            {quoteError && (
+                              <p className="text-xs text-red-600 mt-1">
+                                {quoteError}
+                              </p>
+                            )}
                             {quoteData && !quoteLoading && !quoteError && (
                               <p className="text-xs text-gray-600 mt-1">
-                                Price includes ~{(quoteData.slippageBps / 100).toFixed(2)}% slippage.
-                                {quoteData.platformFee && ` (+ ${formatSolAmount(quoteData.platformFee.amount)} SOL platform fee)`}
+                                Price includes ~
+                                {(quoteData.slippageBps / 100).toFixed(2)}%
+                                slippage.
+                                {quoteData.platformFee &&
+                                  ` (+ ${formatSolAmount(
+                                    quoteData.platformFee.amount
+                                  )} SOL platform fee)`}
                               </p>
                             )}
                             {/* Removed swapSuccess message here, handled by toast now */}
@@ -686,27 +1015,59 @@ export default function VerifyContent() {
                   </div>
                 ) : (
                   <div className="text-center py-4 p-4 bg-gray-100 rounded border border-gray-200">
-                    {verificationError && verificationError.includes("not found") ? (
+                    {verificationError &&
+                    verificationError.includes("not found") ? (
                       <div className="text-orange-700 text-sm">
-                        <p className="font-semibold">Required ${tokenSymbol} not found.</p>
-                        <p>You need {requiredBalanceFormatted} ${tokenSymbol}.</p>
+                        <p className="font-semibold">
+                          Required ${tokenSymbol} not found.
+                        </p>
+                        <p>
+                          You need {requiredBalanceFormatted} ${tokenSymbol}.
+                        </p>
                         <div className="mt-4">
-                          <button onClick={executeSwap} disabled={swapLoading || quoteLoading || !quoteData} className={btnClass(swapLoading || quoteLoading || !quoteData)}>
-                            {swapLoading ? 'Purchasing...' : quoteLoading ? 'Getting Price...' : !quoteData ? 'Loading Price...' : `Buy ${requiredBalanceFormatted} ${tokenSymbol} (~${formatSolAmount(quoteData?.inAmount)} SOL)`}
+                          <button
+                            onClick={executeSwap}
+                            disabled={swapLoading || quoteLoading || !quoteData}
+                            className={btnClass(
+                              swapLoading || quoteLoading || !quoteData
+                            )}
+                          >
+                            {swapLoading
+                              ? "Purchasing..."
+                              : quoteLoading
+                              ? "Getting Price..."
+                              : !quoteData
+                              ? "Loading Price..."
+                              : `Buy ${requiredBalanceFormatted} ${tokenSymbol} (~${formatSolAmount(
+                                  quoteData?.inAmount
+                                )} SOL)`}
                           </button>
-                          {quoteError && <p className="text-xs text-red-600 mt-1">{quoteError}</p>}
-                          {quoteData && !quoteLoading && !quoteError && (
-                              <p className="text-xs text-gray-600 mt-1">
-                                Price includes ~{(quoteData.slippageBps / 100).toFixed(2)}% slippage.
-                                {quoteData.platformFee && ` (+ ${formatSolAmount(quoteData.platformFee.amount)} SOL platform fee)`}
-                              </p>
+                          {quoteError && (
+                            <p className="text-xs text-red-600 mt-1">
+                              {quoteError}
+                            </p>
                           )}
-                           {/* Removed swapSuccess message here, handled by toast now */}
+                          {quoteData && !quoteLoading && !quoteError && (
+                            <p className="text-xs text-gray-600 mt-1">
+                              Price includes ~
+                              {(quoteData.slippageBps / 100).toFixed(2)}%
+                              slippage.
+                              {quoteData.platformFee &&
+                                ` (+ ${formatSolAmount(
+                                  quoteData.platformFee.amount
+                                )} SOL platform fee)`}
+                            </p>
+                          )}
+                          {/* Removed swapSuccess message here, handled by toast now */}
                         </div>
-                        <div className="text-center mt-3"><BalanceRefresher /></div>
+                        <div className="text-center mt-3">
+                          <BalanceRefresher />
+                        </div>
                       </div>
                     ) : (
-                      <p className="text-gray-600">{verificationError || "Could not retrieve balance."}</p>
+                      <p className="text-gray-600">
+                        {verificationError || "Could not retrieve balance."}
+                      </p>
                     )}
                   </div>
                 )}
@@ -714,27 +1075,45 @@ export default function VerifyContent() {
 
               <SignMessageButton />
 
-              {signingMessage && <div className="text-center mt-4 text-gray-600"><p>Check wallet to sign.</p></div>}
-              {verifying && <div className="text-center mt-4 text-gray-600"><p className="animate-pulse">Verifying...</p></div>}
+              {signingMessage && (
+                <div className="text-center mt-4 text-gray-600">
+                  <p>Check wallet to sign.</p>
+                </div>
+              )}
+              {verifying && (
+                <div className="text-center mt-4 text-gray-600">
+                  <p className="animate-pulse">Verifying...</p>
+                </div>
+              )}
             </div>
           )}
 
-           {/* General guidance message */}
-           {!verificationResult && !loadingConfig && (
-             <div className="text-sm text-gray-600 text-center mt-6">
-               {tokenBalance && hasSufficientBalance ? (
-                 !signatureData && <p>Balance sufficient. Sign message to complete verification.</p>
-               ) : tokenBalance ? (
-                 <p>Balance insufficient. Purchase or add ${tokenSymbol} to proceed.</p>
-               ) : loadingBalance ? (
-                 <p>Checking ${tokenSymbol} balance...</p>
-               ) : verificationError ? (
-                 <p>Could not check balance. Refresh or ensure wallet is connected.</p>
-               ) : (
-                 <p>Checking wallet for ${tokenSymbol}...</p>
-               )}
-             </div>
-           )}
+          {/* General guidance message */}
+          {!verificationResult && !loadingConfig && (
+            <div className="text-sm text-gray-600 text-center mt-6">
+              {tokenBalance && hasSufficientBalance ? (
+                !signatureData && (
+                  <p>
+                    Balance sufficient. Sign message to complete verification.
+                  </p>
+                )
+              ) : tokenBalance ? (
+                <p>
+                  Balance insufficient. Purchase or add ${tokenSymbol} to
+                  proceed.
+                </p>
+              ) : loadingBalance ? (
+                <p>Checking ${tokenSymbol} balance...</p>
+              ) : verificationError ? (
+                <p>
+                  Could not check balance. Refresh or ensure wallet is
+                  connected.
+                </p>
+              ) : (
+                <p>Checking wallet for ${tokenSymbol}...</p>
+              )}
+            </div>
+          )}
         </>
       )}
     </div>

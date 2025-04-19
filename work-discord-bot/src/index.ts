@@ -236,9 +236,7 @@ function verifySignature(
   }
 }
 
-async function handleEditConfigCommand(
-  interaction: CommandInteraction
-) {
+async function handleEditConfigCommand(interaction: CommandInteraction) {
   if (!interaction.isChatInputCommand()) {
     console.warn(
       "handleEditConfigCommand called with non-chat input command interaction"
@@ -409,9 +407,7 @@ async function handleEditConfigCommand(
         updateData.token_decimals = newTokenDecimalsInput;
         changes.push(`- Token Decimals: ${newTokenDecimalsInput}`);
       } else {
-        await interaction.editReply(
-          "Token decimals must be between 0 and 18."
-        );
+        await interaction.editReply("Token decimals must be between 0 and 18.");
         validationError = true;
       }
     }
@@ -542,30 +538,30 @@ async function checkAnyWalletHasSufficientBalanceNumber(
 }
 
 async function getServerConfig(guildId: string): Promise<ServerConfig | null> {
-    try {
-        const { data, error } = await supabase
-        .from("servers")
-        .select("*")
-        .eq("server_id", guildId)
-        .maybeSingle();
-        if (error) {
-        console.error(`Error fetching server config for ${guildId}:`, error);
-        return null;
-        }
-        if (!data || !data.setup_complete) {
-        return null;
-        }
-
-        return {
-        ...data,
-        required_balance: String(data.required_balance),
-        token_decimals:
-            data.token_decimals !== null ? Number(data.token_decimals) : null,
-        } as ServerConfig;
-    } catch(e) {
-        console.error(`Unexpected error in getServerConfig for ${guildId}:`, e);
-        return null;
+  try {
+    const { data, error } = await supabase
+      .from("servers")
+      .select("*")
+      .eq("server_id", guildId)
+      .maybeSingle();
+    if (error) {
+      console.error(`Error fetching server config for ${guildId}:`, error);
+      return null;
     }
+    if (!data || !data.setup_complete) {
+      return null;
+    }
+
+    return {
+      ...data,
+      required_balance: String(data.required_balance),
+      token_decimals:
+        data.token_decimals !== null ? Number(data.token_decimals) : null,
+    } as ServerConfig;
+  } catch (e) {
+    console.error(`Unexpected error in getServerConfig for ${guildId}:`, e);
+    return null;
+  }
 }
 
 function formatBalanceNumber(
@@ -720,27 +716,31 @@ async function handleSetupCommand(interaction: CommandInteraction) {
       await interaction.editReply("Invalid role selected.");
       return;
     }
-     if (!guild.members.me) {
-         console.error("[Setup Command] Cannot check bot permissions: guild.members.me is null.");
-         await interaction.editReply("Internal error: Could not verify bot permissions.");
-         return;
-     }
+    if (!guild.members.me) {
+      console.error(
+        "[Setup Command] Cannot check bot permissions: guild.members.me is null."
+      );
+      await interaction.editReply(
+        "Internal error: Could not verify bot permissions."
+      );
+      return;
+    }
     if (roleToGrant.managed || roleToGrant.id === guild.roles.everyone.id) {
       await interaction.editReply(
         "Cannot assign a managed or the @everyone role."
       );
       return;
     }
-     if (
-         !guild.members.me.permissions.has(PermissionFlagsBits.ManageRoles) ||
-         (roleToGrant.position >= guild.members.me.roles.highest.position &&
-             guild.ownerId !== client.user?.id)
-     ) {
-         await interaction.editReply(
-             `The bot lacks permissions or has insufficient hierarchy to assign the role \`${roleToGrant.name}\`. Ensure the bot's role is higher than this role and has 'Manage Roles' permission.`
-         );
-         return;
-     }
+    if (
+      !guild.members.me.permissions.has(PermissionFlagsBits.ManageRoles) ||
+      (roleToGrant.position >= guild.members.me.roles.highest.position &&
+        guild.ownerId !== client.user?.id)
+    ) {
+      await interaction.editReply(
+        `The bot lacks permissions or has insufficient hierarchy to assign the role \`${roleToGrant.name}\`. Ensure the bot's role is higher than this role and has 'Manage Roles' permission.`
+      );
+      return;
+    }
 
     let requiredBalanceNumber: number;
     try {
@@ -815,29 +815,31 @@ async function handleSetupCommand(interaction: CommandInteraction) {
       setupError
     );
     if (interaction.isRepliable()) {
-         try {
-             const errorReplyOptions = {
-                 content:
-                   "An unexpected error occurred during setup. Please check the bot logs or contact support.",
-                 ephemeral: true,
-               };
-             if (interaction.replied || interaction.deferred) {
-                 await interaction.editReply(errorReplyOptions);
-               } else {
-                 await interaction.reply(errorReplyOptions);
-               }
-         } catch (replyError) {
-             console.error("[Setup Command] Failed to send error reply to interaction:", replyError);
-         }
-     }
+      try {
+        const errorReplyOptions = {
+          content:
+            "An unexpected error occurred during setup. Please check the bot logs or contact support.",
+          ephemeral: true,
+        };
+        if (interaction.replied || interaction.deferred) {
+          await interaction.editReply(errorReplyOptions);
+        } else {
+          await interaction.reply(errorReplyOptions);
+        }
+      } catch (replyError) {
+        console.error(
+          "[Setup Command] Failed to send error reply to interaction:",
+          replyError
+        );
+      }
+    }
   }
 }
 
 async function handleVerifyCommand(interaction: CommandInteraction) {
-   if (!interaction.isChatInputCommand()) return;
-   const guild = interaction.guild!;
-   const guildId = interaction.guildId!;
-
+  if (!interaction.isChatInputCommand()) return;
+  const guild = interaction.guild!;
+  const guildId = interaction.guildId!;
 
   await interaction.deferReply({ ephemeral: true });
 
@@ -874,15 +876,20 @@ async function handleVerifyCommand(interaction: CommandInteraction) {
   }
 
   const row = new ActionRowBuilder<ButtonBuilder>();
-  let requiredBalanceNum : number;
-   try {
-       requiredBalanceNum = Number(serverConfig.required_balance);
-       if(isNaN(requiredBalanceNum)) throw new Error("Invalid balance format in config");
-   } catch (e) {
-       console.error(`[Verify Command] Invalid required_balance in config for guild ${guildId}: ${serverConfig.required_balance}`);
-       await interaction.editReply("Server configuration error (invalid balance). Please contact an admin.");
-       return;
-   }
+  let requiredBalanceNum: number;
+  try {
+    requiredBalanceNum = Number(serverConfig.required_balance);
+    if (isNaN(requiredBalanceNum))
+      throw new Error("Invalid balance format in config");
+  } catch (e) {
+    console.error(
+      `[Verify Command] Invalid required_balance in config for guild ${guildId}: ${serverConfig.required_balance}`
+    );
+    await interaction.editReply(
+      "Server configuration error (invalid balance). Please contact an admin."
+    );
+    return;
+  }
 
   const requiredBalanceFormatted = formatBalanceNumber(
     requiredBalanceNum,
@@ -893,7 +900,6 @@ async function handleVerifyCommand(interaction: CommandInteraction) {
     : " tokens";
 
   const hasWallets = existingUser && existingUser.addresses?.length > 0;
-
 
   if (
     !existingUser ||
@@ -917,16 +923,19 @@ async function handleVerifyCommand(interaction: CommandInteraction) {
 
   if (CLIENT_URL) {
     const params = new URLSearchParams({
-        tokenMint: serverConfig.token_address,
-        requiredRawAmount: serverConfig.required_balance,
-        guildId: guildId,
-        guildName: guild.name,
+      tokenMint: serverConfig.token_address,
+      requiredRawAmount: serverConfig.required_balance,
+      guildId: guildId,
+      guildName: guild.name,
     });
     if (serverConfig.token_symbol) {
-        params.set('tokenSymbol', serverConfig.token_symbol);
+      params.set("tokenSymbol", serverConfig.token_symbol);
     }
-    if (serverConfig.token_decimals !== null && serverConfig.token_decimals !== undefined) {
-        params.set('tokenDecimals', serverConfig.token_decimals.toString());
+    if (
+      serverConfig.token_decimals !== null &&
+      serverConfig.token_decimals !== undefined
+    ) {
+      params.set("tokenDecimals", serverConfig.token_decimals.toString());
     }
     const buyLink = `${CLIENT_URL}/buy?${params.toString()}`;
 
@@ -938,11 +947,9 @@ async function handleVerifyCommand(interaction: CommandInteraction) {
     );
   }
 
-    const messageContent =
+  const messageContent =
     `**Token Verification for ${guild.name}**\n` +
-    `You need at least \`${requiredBalanceFormatted}${tokenSymbolDisplay}\` of the token (\`${
-      serverConfig.token_address
-    }\`) in a connected Solana wallet to get the <@&${serverConfig.role_id}> role.\n\n` +
+    `You need at least \`${requiredBalanceFormatted}${tokenSymbolDisplay}\` of the token (\`${serverConfig.token_address}\`) in a connected Solana wallet to get the <@&${serverConfig.role_id}> role.\n\n` +
     `${
       hasWallets
         ? `You currently have ${
@@ -951,7 +958,6 @@ async function handleVerifyCommand(interaction: CommandInteraction) {
         : "You haven't connected any wallets for this server yet."
     }\n\n` +
     `Please choose an option:`;
-
 
   await interaction.editReply({
     content: messageContent,
@@ -983,7 +989,6 @@ async function handleTipCommand(interaction: CommandInteraction) {
     });
     return;
   }
-
 
   const receiverUsernameEncoded = encodeURIComponent(mentionedUser.username);
   const tipLink = `${CLIENT_URL}/tip?receiver_user_id=${mentionedUser.id}&receiver_username=${receiverUsernameEncoded}&amount=${amount}&guildId=${guildId}&sender_user_id=${interaction.user.id}`;
@@ -1104,19 +1109,23 @@ app.get("/api/verification-context", async (req: Request, res: Response) => {
     console.log(`${logPrefix} Code not found or expired`);
     res.status(404).json({
       success: false,
-      message: "Invalid or expired verification code. Please try /verify again.",
+      message:
+        "Invalid or expired verification code. Please try /verify again.",
     });
     return;
   }
   const { guildId, userId, action } = verificationData;
-  console.log(`${logPrefix} Found code for user ${userId}, guild ${guildId}, action ${action}`);
+  console.log(
+    `${logPrefix} Found code for user ${userId}, guild ${guildId}, action ${action}`
+  );
 
   const serverConfig = await getServerConfig(guildId);
   if (!serverConfig) {
     console.log(`[API Context] Server config not found for guild: ${guildId}`);
     res.status(404).json({
       success: false,
-      message: "Server configuration not found or incomplete for this verification link. Please contact an admin.",
+      message:
+        "Server configuration not found or incomplete for this verification link. Please contact an admin.",
     });
     return;
   }
@@ -1143,14 +1152,18 @@ app.post("/api/verify-wallet", async (req: Request, res: Response) => {
   const { verificationCode, walletAddress, signature, message } = req.body;
   const logPrefix = `[API Verify ${verificationCode?.substring(0, 6)}...]`;
   console.log(
-    `${logPrefix} Request received for wallet ${walletAddress?.substring(0,6)}...`
+    `${logPrefix} Request received for wallet ${walletAddress?.substring(
+      0,
+      6
+    )}...`
   );
 
   if (!verificationCode || !walletAddress || !signature || !message) {
     console.log(`${logPrefix} Missing required fields.`);
     res.status(400).json({
       success: false,
-      message: "Missing required fields (verificationCode, walletAddress, signature, message).",
+      message:
+        "Missing required fields (verificationCode, walletAddress, signature, message).",
     });
     return;
   }
@@ -1160,21 +1173,25 @@ app.post("/api/verify-wallet", async (req: Request, res: Response) => {
     console.log(`${logPrefix} Invalid or expired verification code.`);
     res.status(404).json({
       success: false,
-      message: "Invalid or expired verification code. Please try /verify again.",
+      message:
+        "Invalid or expired verification code. Please try /verify again.",
     });
     return;
   }
 
   pendingVerifications.delete(verificationCode);
   const { userId, action, guildId } = verificationData;
-  console.log(`${logPrefix} Consumed code for user ${userId}, guild ${guildId}, action ${action}`);
+  console.log(
+    `${logPrefix} Consumed code for user ${userId}, guild ${guildId}, action ${action}`
+  );
 
   const serverConfig = await getServerConfig(guildId);
   if (!serverConfig) {
     console.log(`${logPrefix} Server config not found for guild ${guildId}`);
     res.status(404).json({
       success: false,
-      message: "Server configuration associated with this verification link was not found or is incomplete.",
+      message:
+        "Server configuration associated with this verification link was not found or is incomplete.",
     });
     return;
   }
@@ -1190,9 +1207,12 @@ app.post("/api/verify-wallet", async (req: Request, res: Response) => {
   let requiredBalanceNum: number;
   try {
     requiredBalanceNum = Number(requiredBalanceStr);
-    if (isNaN(requiredBalanceNum) || requiredBalanceNum < 0) throw new Error("Invalid balance in config");
+    if (isNaN(requiredBalanceNum) || requiredBalanceNum < 0)
+      throw new Error("Invalid balance in config");
   } catch {
-    console.error(`${logPrefix} Invalid required_balance '${requiredBalanceStr}' in config for guild ${guildId}`);
+    console.error(
+      `${logPrefix} Invalid required_balance '${requiredBalanceStr}' in config for guild ${guildId}`
+    );
     res.status(500).json({
       success: false,
       message: "Server configuration error (invalid balance requirement).",
@@ -1200,11 +1220,15 @@ app.post("/api/verify-wallet", async (req: Request, res: Response) => {
     return;
   }
   if (requiredBalanceNum > Number.MAX_SAFE_INTEGER)
-    console.warn(`${logPrefix} [Precision Warning] Required balance ${requiredBalanceNum} for guild ${guildId} exceeds safe limits.`);
+    console.warn(
+      `${logPrefix} [Precision Warning] Required balance ${requiredBalanceNum} for guild ${guildId} exceeds safe limits.`
+    );
 
   const isSignatureValid = verifySignature(message, signature, walletAddress);
   if (!isSignatureValid) {
-    console.log(`${logPrefix} Signature verification failed for ${walletAddress}`);
+    console.log(
+      `${logPrefix} Signature verification failed for ${walletAddress}`
+    );
     res.status(401).json({
       success: false,
       message: "Wallet signature verification failed.",
@@ -1224,31 +1248,46 @@ app.post("/api/verify-wallet", async (req: Request, res: Response) => {
   }
 
   const role = guild.roles.cache.get(role_id);
-   if (!role) {
-       console.error(`${logPrefix} Role ${role_id} not found in guild ${guildId}. Config needs update.`);
-       // Note: We continue processing to save the wallet, but won't assign the role.
-   } else if (!guild.members.me) {
-       console.error(`${logPrefix} Cannot check role permissions as guild.members.me is null.`);
-       // Note: Continue processing, role assignment will likely fail later if attempted.
-   } else if (!guild.members.me.permissions.has(PermissionFlagsBits.ManageRoles) || (role.position >= guild.members.me.roles.highest.position && guild.ownerId !== client.user?.id)) {
-       console.error(`${logPrefix} Bot lacks permission or hierarchy to manage role ${role_id} in guild ${guildId}.`);
-       // Note: Continue processing, role assignment will fail later if attempted.
-   }
-
+  if (!role) {
+    console.error(
+      `${logPrefix} Role ${role_id} not found in guild ${guildId}. Config needs update.`
+    );
+    // Note: We continue processing to save the wallet, but won't assign the role.
+  } else if (!guild.members.me) {
+    console.error(
+      `${logPrefix} Cannot check role permissions as guild.members.me is null.`
+    );
+    // Note: Continue processing, role assignment will likely fail later if attempted.
+  } else if (
+    !guild.members.me.permissions.has(PermissionFlagsBits.ManageRoles) ||
+    (role.position >= guild.members.me.roles.highest.position &&
+      guild.ownerId !== client.user?.id)
+  ) {
+    console.error(
+      `${logPrefix} Bot lacks permission or hierarchy to manage role ${role_id} in guild ${guildId}.`
+    );
+    // Note: Continue processing, role assignment will fail later if attempted.
+  }
 
   let member: GuildMember | null = null;
   try {
     member = await guild.members.fetch(userId);
   } catch (err) {
-    console.error(`${logPrefix} Failed to fetch member ${userId} in guild ${guildId}:`, err);
+    console.error(
+      `${logPrefix} Failed to fetch member ${userId} in guild ${guildId}:`,
+      err
+    );
     res.status(404).json({
       success: false,
-      message: "Could not find you in the Discord server. Have you left since starting verification?",
+      message:
+        "Could not find you in the Discord server. Have you left since starting verification?",
     });
     return;
   }
   if (!member) {
-    console.error(`${logPrefix} Member ${userId} fetched as null in guild ${guildId}`);
+    console.error(
+      `${logPrefix} Member ${userId} fetched as null in guild ${guildId}`
+    );
     res.status(404).json({
       success: false,
       message: "Could not find your user account in the Discord server.",
@@ -1270,9 +1309,7 @@ app.post("/api/verify-wallet", async (req: Request, res: Response) => {
     if (action === "new" || !existingUser || !existingUser.addresses) {
       finalAddresses = [walletAddress];
     } else {
-      finalAddresses = [
-        ...new Set([...existingUser.addresses, walletAddress]),
-      ];
+      finalAddresses = [...new Set([...existingUser.addresses, walletAddress])];
     }
 
     const finalActiveStatus = await checkAnyWalletHasSufficientBalanceNumber(
@@ -1299,7 +1336,9 @@ app.post("/api/verify-wallet", async (req: Request, res: Response) => {
 
     if (upsertError) throw upsertError;
 
-    console.log(`${logPrefix} Upserted holder ${userId} for guild ${guildId}. Active: ${finalActiveStatus}`);
+    console.log(
+      `${logPrefix} Upserted holder ${userId} for guild ${guildId}. Active: ${finalActiveStatus}`
+    );
 
     let roleUpdated = false;
     let roleUpdateMessage = "";
@@ -1309,56 +1348,81 @@ app.post("/api/verify-wallet", async (req: Request, res: Response) => {
         const hasRole = member.roles.cache.has(role_id);
         if (finalActiveStatus && !hasRole) {
           await member.roles.add(role_id, "Verified token holder via bot");
-          console.log(`${logPrefix} Added role ${role.name} (${role_id}) to ${member.user.tag}`);
+          console.log(
+            `${logPrefix} Added role ${role.name} (${role_id}) to ${member.user.tag}`
+          );
           roleUpdated = true;
           roleUpdateMessage = "Role granted or confirmed.";
         } else if (!finalActiveStatus && hasRole) {
           await member.roles.remove(role_id, "Token balance below threshold");
-          console.log(`${logPrefix} Removed role ${role.name} (${role_id}) from ${member.user.tag}`);
+          console.log(
+            `${logPrefix} Removed role ${role.name} (${role_id}) from ${member.user.tag}`
+          );
           roleUpdated = true;
           roleUpdateMessage = "Role removed due to insufficient balance.";
         } else if (finalActiveStatus && hasRole) {
-            roleUpdateMessage = "Role confirmed.";
+          roleUpdateMessage = "Role confirmed.";
         } else {
-            roleUpdateMessage = "Role not granted (insufficient balance).";
+          roleUpdateMessage = "Role not granted (insufficient balance).";
         }
       } catch (roleError: any) {
-        console.error(`${logPrefix} Failed to update role ${role_id} for ${member.user.tag}:`, roleError);
-        roleUpdateMessage = "Failed to update role due to a bot permission error.";
+        console.error(
+          `${logPrefix} Failed to update role ${role_id} for ${member.user.tag}:`,
+          roleError
+        );
+        roleUpdateMessage =
+          "Failed to update role due to a bot permission error.";
       }
     } else {
       roleUpdateMessage = "Configured role not found, cannot update roles.";
-      console.warn(`${logPrefix} Role ${role_id} does not exist, skipping role update.`);
+      console.warn(
+        `${logPrefix} Role ${role_id} does not exist, skipping role update.`
+      );
     }
 
-    const walletDisplay = `${walletAddress.substring(0, 4)}...${walletAddress.substring(walletAddress.length - 4)}`;
+    const walletDisplay = `${walletAddress.substring(
+      0,
+      4
+    )}...${walletAddress.substring(walletAddress.length - 4)}`;
 
     if (finalActiveStatus) {
-        res.status(200).json({
-            success: true,
-            message: `Wallet ${walletDisplay} verified successfully! ${roleUpdateMessage}`,
-        });
-        return;
+      res.status(200).json({
+        success: true,
+        message: `Wallet ${walletDisplay} verified successfully! ${roleUpdateMessage}`,
+      });
+      return;
     } else {
-        const currentBalanceNum = await checkTokenBalanceRawNumber(
-            walletAddress,
-            token_address,
-            rpc_url
-        );
-        const currentBalanceFormatted = formatBalanceNumber(currentBalanceNum, token_decimals);
-        const requiredBalanceFormatted = formatBalanceNumber(requiredBalanceNum, token_decimals);
-        const tokenSymbolDisplay = token_symbol ? ` ${token_symbol}` : ` token(s)`;
+      const currentBalanceNum = await checkTokenBalanceRawNumber(
+        walletAddress,
+        token_address,
+        rpc_url
+      );
+      const currentBalanceFormatted = formatBalanceNumber(
+        currentBalanceNum,
+        token_decimals
+      );
+      const requiredBalanceFormatted = formatBalanceNumber(
+        requiredBalanceNum,
+        token_decimals
+      );
+      const tokenSymbolDisplay = token_symbol
+        ? ` ${token_symbol}`
+        : ` token(s)`;
 
-        let msg = `Wallet ${walletDisplay} linked, but it (or your combined wallets) currently holds insufficient balance. ` +
-                `Required: ${requiredBalanceFormatted}${tokenSymbolDisplay}. This wallet balance: ${currentBalanceFormatted}${tokenSymbolDisplay}. ` +
-                `${roleUpdateMessage}`;
+      let msg =
+        `Wallet ${walletDisplay} linked, but it (or your combined wallets) currently holds insufficient balance. ` +
+        `Required: ${requiredBalanceFormatted}${tokenSymbolDisplay}. This wallet balance: ${currentBalanceFormatted}${tokenSymbolDisplay}. ` +
+        `${roleUpdateMessage}`;
 
-        console.log(`${logPrefix} Insufficient balance for user ${userId}. ${msg}`);
-        res.status(400).json({ // Use 400 for insufficient balance as it's a client-side state issue
-            success: false,
-            message: msg
-        });
-        return;
+      console.log(
+        `${logPrefix} Insufficient balance for user ${userId}. ${msg}`
+      );
+      res.status(400).json({
+        // Use 400 for insufficient balance as it's a client-side state issue
+        success: false,
+        message: msg,
+      });
+      return;
     }
   } catch (dbError) {
     console.error(`${logPrefix} Database error during verification:`, dbError);
@@ -1398,15 +1462,21 @@ app.post("/api/send-channel-message", async (req: Request, res: Response) => {
     const channel = await guild.channels.fetch(channelId).catch(() => null);
 
     if (channel?.isTextBased() && channel instanceof TextChannel) {
-        if (!guild.members.me) {
-             console.error(`${logPrefix} Cannot check permissions as guild.members.me is null.`);
-             res.status(500).json({
-                 success: false,
-                 message: "Internal bot error checking permissions."
-                });
-             return;
-        }
-      if (!channel.permissionsFor(guild.members.me)?.has(PermissionFlagsBits.SendMessages)) {
+      if (!guild.members.me) {
+        console.error(
+          `${logPrefix} Cannot check permissions as guild.members.me is null.`
+        );
+        res.status(500).json({
+          success: false,
+          message: "Internal bot error checking permissions.",
+        });
+        return;
+      }
+      if (
+        !channel
+          .permissionsFor(guild.members.me)
+          ?.has(PermissionFlagsBits.SendMessages)
+      ) {
         console.error(`${logPrefix} Bot lacks SendMessages permission.`);
         res.status(403).json({
           success: false,
@@ -1418,9 +1488,9 @@ app.post("/api/send-channel-message", async (req: Request, res: Response) => {
       await channel.send(String(message)); // Ensure message is string
       console.log(`${logPrefix} Message sent successfully.`);
       res.status(200).json({
-          success: true,
-          message: "Message sent successfully!"
-        });
+        success: true,
+        message: "Message sent successfully!",
+      });
       return;
     } else {
       console.log(`${logPrefix} Channel not found or not a text channel.`);
@@ -1469,29 +1539,31 @@ app.post("/api/send-direct-message", async (req: Request, res: Response) => {
 
     if (member) {
       try {
-          await member.send(String(message)); // Ensure message is string
-          console.log(`${logPrefix} DM sent successfully.`);
-          res.status(200).json({
-              success: true,
-              message: "Direct message sent successfully!"
-            });
-          return;
+        await member.send(String(message)); // Ensure message is string
+        console.log(`${logPrefix} DM sent successfully.`);
+        res.status(200).json({
+          success: true,
+          message: "Direct message sent successfully!",
+        });
+        return;
       } catch (dmError: any) {
-            console.error(`${logPrefix} API Error sending DM:`, dmError);
-            if (dmError.code === 50007) {
-                console.log(`${logPrefix} Cannot send DM (user settings or block).`);
-                res.status(403).json({
-                    success: false,
-                    message: "Cannot send direct message to this user. They may have DMs disabled or have blocked the bot.",
-                });
-                return;
-            } else {
-                res.status(500).json({
-                    success: false,
-                    message: "An internal server error occurred while attempting to send the direct message.",
-                });
-                return;
-            }
+        console.error(`${logPrefix} API Error sending DM:`, dmError);
+        if (dmError.code === 50007) {
+          console.log(`${logPrefix} Cannot send DM (user settings or block).`);
+          res.status(403).json({
+            success: false,
+            message:
+              "Cannot send direct message to this user. They may have DMs disabled or have blocked the bot.",
+          });
+          return;
+        } else {
+          res.status(500).json({
+            success: false,
+            message:
+              "An internal server error occurred while attempting to send the direct message.",
+          });
+          return;
+        }
       }
     } else {
       console.log(`${logPrefix} User ${userId} not found in guild ${guildId}.`);
@@ -1502,7 +1574,10 @@ app.post("/api/send-direct-message", async (req: Request, res: Response) => {
       return;
     }
   } catch (error) {
-    console.error(`${logPrefix} API Error (outer scope) processing DM request:`, error);
+    console.error(
+      `${logPrefix} API Error (outer scope) processing DM request:`,
+      error
+    );
     res.status(500).json({
       success: false,
       message: "An unexpected internal server error occurred.",
@@ -1522,9 +1597,7 @@ async function checkAllBalancesNumber() {
   try {
     const { data: servers, error: serverError } = await supabase
       .from("servers")
-      .select(
-        "server_id, token_address, required_balance, role_id, rpc_url"
-      )
+      .select("server_id, token_address, required_balance, role_id, rpc_url")
       .eq("setup_complete", true);
 
     if (serverError) {
@@ -1549,7 +1622,8 @@ async function checkAllBalancesNumber() {
       let requiredBalanceNum: number;
       try {
         requiredBalanceNum = Number(requiredBalanceStr);
-        if (isNaN(requiredBalanceNum) || requiredBalanceNum < 0) throw new Error("Invalid balance");
+        if (isNaN(requiredBalanceNum) || requiredBalanceNum < 0)
+          throw new Error("Invalid balance");
       } catch {
         console.error(
           `${serverLogPrefix} Invalid required_balance '${requiredBalanceStr}'. Skipping.`
@@ -1563,14 +1637,16 @@ async function checkAllBalancesNumber() {
 
       const guild = client.guilds.cache.get(guildId);
       if (!guild) {
-          // console.warn(`${serverLogPrefix} Guild not found in cache. Skipping.`);
+        // console.warn(`${serverLogPrefix} Guild not found in cache. Skipping.`);
         continue;
       }
 
-       if (!guild.members.me) {
-           console.warn(`${serverLogPrefix} Bot member object not found in cache. Skipping role checks for this guild.`);
-           continue;
-       }
+      if (!guild.members.me) {
+        console.warn(
+          `${serverLogPrefix} Bot member object not found in cache. Skipping role checks for this guild.`
+        );
+        continue;
+      }
 
       const role = guild.roles.cache.get(roleId);
       if (!role) {
@@ -1580,13 +1656,19 @@ async function checkAllBalancesNumber() {
 
       let canManageRoles = false;
       if (!guild.members.me.permissions.has(PermissionFlagsBits.ManageRoles)) {
-        console.warn(`${serverLogPrefix} Bot lacks ManageRoles permission. Cannot update roles.`);
-      } else if (role.position >= guild.members.me.roles.highest.position && guild.ownerId !== client.user?.id) {
-        console.warn(`${serverLogPrefix} Role ${role.name} (${roleId}) is too high. Cannot manage.`);
+        console.warn(
+          `${serverLogPrefix} Bot lacks ManageRoles permission. Cannot update roles.`
+        );
+      } else if (
+        role.position >= guild.members.me.roles.highest.position &&
+        guild.ownerId !== client.user?.id
+      ) {
+        console.warn(
+          `${serverLogPrefix} Role ${role.name} (${roleId}) is too high. Cannot manage.`
+        );
       } else {
-          canManageRoles = true;
+        canManageRoles = true;
       }
-
 
       const { data: holders, error: holderError } = await supabase
         .from("holders")
@@ -1611,7 +1693,9 @@ async function checkAllBalancesNumber() {
         let member: GuildMember | null = null;
 
         try {
-          member = await guild.members.fetch(holder.discord_user_id).catch(() => null);
+          member = await guild.members
+            .fetch(holder.discord_user_id)
+            .catch(() => null);
 
           if (!member) {
             if (holder.active) {
@@ -1646,53 +1730,66 @@ async function checkAllBalancesNumber() {
             );
 
           const currentRoleStatus = member.roles.cache.has(roleId);
-          const needsDbUpdate = holder.active !== hasSufficientBalance || holder.username !== member.user.username;
+          const needsDbUpdate =
+            holder.active !== hasSufficientBalance ||
+            holder.username !== member.user.username;
           let roleUpdatedThisCheck = false;
 
           if (canManageRoles) {
-              if (hasSufficientBalance && !currentRoleStatus) {
-                try {
-                  await member.roles.add(roleId, "Verified token holder (periodic check)");
-                  console.log(
-                    `${userLogPrefix} Added role ${role.name} to ${member.user.tag}`
-                  );
-                  roleUpdates++;
-                  roleUpdatedThisCheck = true;
-                } catch (roleAddError) {
-                  console.error(
-                    `${userLogPrefix} Error adding role ${role.name} to ${member.user.tag}:`,
-                    roleAddError
-                  );
-                }
-              } else if (!hasSufficientBalance && currentRoleStatus) {
-                try {
-                  await member.roles.remove(roleId, "Token balance below threshold (periodic check)");
-                  console.log(
-                    `${userLogPrefix} Removed role ${role.name} from ${member.user.tag}`
-                  );
-                  roleUpdates++;
-                  roleUpdatedThisCheck = true;
-                } catch (roleRemoveError) {
-                  console.error(
-                    `${userLogPrefix} Error removing role ${role.name} from ${member.user.tag}:`,
-                    roleRemoveError
-                  );
-                }
+            if (hasSufficientBalance && !currentRoleStatus) {
+              try {
+                await member.roles.add(
+                  roleId,
+                  "Verified token holder (periodic check)"
+                );
+                console.log(
+                  `${userLogPrefix} Added role ${role.name} to ${member.user.tag}`
+                );
+                roleUpdates++;
+                roleUpdatedThisCheck = true;
+              } catch (roleAddError) {
+                console.error(
+                  `${userLogPrefix} Error adding role ${role.name} to ${member.user.tag}:`,
+                  roleAddError
+                );
               }
-          } else if (holder.active !== hasSufficientBalance){
-              // Log if role *should* change but bot lacks permissions
-              if ((hasSufficientBalance && !currentRoleStatus) || (!hasSufficientBalance && currentRoleStatus)) {
-                 console.warn(`${userLogPrefix} Role status needs update for ${member.user.tag} but bot lacks permissions/hierarchy.`);
+            } else if (!hasSufficientBalance && currentRoleStatus) {
+              try {
+                await member.roles.remove(
+                  roleId,
+                  "Token balance below threshold (periodic check)"
+                );
+                console.log(
+                  `${userLogPrefix} Removed role ${role.name} from ${member.user.tag}`
+                );
+                roleUpdates++;
+                roleUpdatedThisCheck = true;
+              } catch (roleRemoveError) {
+                console.error(
+                  `${userLogPrefix} Error removing role ${role.name} from ${member.user.tag}:`,
+                  roleRemoveError
+                );
               }
+            }
+          } else if (holder.active !== hasSufficientBalance) {
+            // Log if role *should* change but bot lacks permissions
+            if (
+              (hasSufficientBalance && !currentRoleStatus) ||
+              (!hasSufficientBalance && currentRoleStatus)
+            ) {
+              console.warn(
+                `${userLogPrefix} Role status needs update for ${member.user.tag} but bot lacks permissions/hierarchy.`
+              );
+            }
           }
 
           if (needsDbUpdate) {
             const updatePayload: Partial<Holder> & { updated_at: string } = {
-                 active: hasSufficientBalance,
-                 updated_at: new Date().toISOString()
-             };
-            if(holder.username !== member.user.username) {
-                updatePayload.username = member.user.username;
+              active: hasSufficientBalance,
+              updated_at: new Date().toISOString(),
+            };
+            if (holder.username !== member.user.username) {
+              updatePayload.username = member.user.username;
             }
 
             const { error: updateError } = await supabase
@@ -1709,21 +1806,23 @@ async function checkAllBalancesNumber() {
                 updateError
               );
             } else {
-                 console.log(
-                  `${userLogPrefix} Updated DB status for ${member.user.tag} to active=${hasSufficientBalance}` + (updatePayload.username ? ` (Username also updated)` : '')
-                 );
-                dbUpdates++;
+              console.log(
+                `${userLogPrefix} Updated DB status for ${member.user.tag} to active=${hasSufficientBalance}` +
+                  (updatePayload.username ? ` (Username also updated)` : "")
+              );
+              dbUpdates++;
             }
           }
         } catch (userError) {
           console.error(
-            `${userLogPrefix} Error processing holder ${holder.username || holder.discord_user_id}:`,
+            `${userLogPrefix} Error processing holder ${
+              holder.username || holder.discord_user_id
+            }:`,
             userError
           );
         }
       }
     }
-
   } catch (error) {
     console.error(
       `${logPrefix} Unhandled critical error during balance check:`,
@@ -1736,6 +1835,6 @@ app.listen(PORT, () => {
 });
 
 client.login(process.env.DISCORD_TOKEN).catch((err) => {
-    console.error("FATAL: Failed to login to Discord:", err);
-    process.exit(1);
+  console.error("FATAL: Failed to login to Discord:", err);
+  process.exit(1);
 });
