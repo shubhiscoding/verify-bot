@@ -4,7 +4,7 @@ import { useWallet, useConnection } from "@solana/wallet-adapter-react";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { useSearchParams } from 'next/navigation';
-import { VersionedTransaction, LAMPORTS_PER_SOL, PublicKey } from '@solana/web3.js';
+import { VersionedTransaction, LAMPORTS_PER_SOL } from '@solana/web3.js';
 import axios from 'axios';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
