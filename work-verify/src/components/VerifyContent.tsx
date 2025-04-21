@@ -4,7 +4,7 @@ import { useWallet, useConnection } from "@solana/wallet-adapter-react";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { useSearchParams } from 'next/navigation';
-import { VersionedTransaction, LAMPORTS_PER_SOL } from '@solana/web3.js';
+import { VersionedTransaction, LAMPORTS_PER_SOL, Transaction, SystemProgram, PublicKey } from '@solana/web3.js';
 import axios from 'axios';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -29,6 +29,8 @@ export default function VerifyContent() {
   const [verificationResult, setVerificationResult] = useState<{ success: boolean; message: string } | null>(null);
   const [signatureData, setSignatureData] = useState<SignatureData | null>(null);
   const [signingMessage, setSigningMessage] = useState(false);
+  const [isLedgerFlow, setIsLedgerFlow] = useState(false);
+  const [signingTransaction, setSigningTransaction] = useState(false);
   const isFetchingRef = useRef(false);
   const verificationCode = searchParams.get('code');
 
@@ -148,6 +150,58 @@ export default function VerifyContent() {
     }
   };
 
+  const handleSignDummyTransaction = async () => {
+    if (!publicKey || !verificationCode || !sendTransaction || !connection) {
+      setVerificationError("Cannot sign transaction: wallet not connected or missing verification code");
+      toast.error("Cannot sign transaction: wallet not connected or missing verification code");
+      return;
+    }
+    if (!tokenBalance || tokenBalance.amount < REQUIRED_BALANCE) {
+      setVerificationError("Cannot sign transaction: Insufficient token balance.");
+      toast.error("Cannot sign transaction: Insufficient token balance.");
+      return;
+    }
+
+    try {
+      setSigningTransaction(true);
+      setVerificationError(null);
+      setIsLedgerFlow(true);
+      
+      // Create a dummy transaction that transfers 0 SOL to self
+      const transaction = new Transaction().add(
+        SystemProgram.transfer({
+          fromPubkey: publicKey,
+          toPubkey: publicKey,
+          lamports: 0
+        })
+      );
+      
+      // Set a recent blockhash
+      transaction.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
+      transaction.feePayer = publicKey;
+      
+      // Send the transaction but don't actually submit it to the network
+      const signature = await sendTransaction(transaction, connection, { skipPreflight: true });
+      
+      // We use the transaction signature as proof of ownership
+      const messageString = `Verify wallet ownership for Discord role: ${verificationCode}`;
+      setSignatureData({
+        signature: signature,
+        message: messageString
+      });
+      
+      toast.success("Transaction signed successfully!");
+    } catch (err) {
+      console.error('Error signing transaction:', err);
+      setVerificationError("Failed to sign transaction with wallet");
+      toast.error("Failed to sign transaction with wallet. Please try again.");
+      setSignatureData(null);
+      setIsLedgerFlow(false);
+    } finally {
+      setSigningTransaction(false);
+    }
+  };
+
   const verifyWallet = useCallback(async () => {
     if (!verificationCode || !publicKey || !tokenBalance || !signatureData) {
         console.error("Verification prerequisites not met:", { verificationCode, publicKey, tokenBalance, signatureData });
@@ -174,7 +228,8 @@ export default function VerifyContent() {
           walletAddress: publicKey.toString(),
           tokenBalance: tokenBalance.amount,
           signature: signatureData.signature,
-          message: signatureData.message
+          message: signatureData.message,
+          isLedgerFlow: isLedgerFlow
         }),
       });
 
@@ -193,7 +248,7 @@ export default function VerifyContent() {
     } finally {
       setVerifying(false);
     }
-  }, [verificationCode, publicKey, tokenBalance, signatureData]);
+  }, [verificationCode, publicKey, tokenBalance, signatureData, isLedgerFlow]);
 
   useEffect(() => {
     if (signatureData && tokenBalance && tokenBalance.amount >= REQUIRED_BALANCE && !verifying && !verificationResult) {
@@ -447,6 +502,7 @@ export default function VerifyContent() {
                             tokenBalance.amount >= REQUIRED_BALANCE && 
                             !signatureData && 
                             !signingMessage && 
+                            !signingTransaction &&
                             !verifying;
     
     const recentlyCompleted = swapSuccess && shouldShowButton;
@@ -462,9 +518,9 @@ export default function VerifyContent() {
         )}
         <button
           onClick={handleSignMessage}
-          disabled={signingMessage || verifying}
-          className={`w-full px-4 py-3 rounded text-white font-semibold transition duration-200 ${
-            (signingMessage || verifying)
+          disabled={signingMessage || signingTransaction || verifying}
+          className={`w-full px-4 py-3 rounded text-white font-semibold transition duration-200 cursor-pointer ${
+            (signingMessage || signingTransaction || verifying)
               ? 'bg-gray-400 cursor-not-allowed'
               : recentlyCompleted 
                 ? 'bg-green-600 hover:bg-green-700 shadow-md'
@@ -473,6 +529,24 @@ export default function VerifyContent() {
         >
           {signingMessage ? 'Waiting for Signature...' : verifying ? 'Processing...' : 'Sign Message to Verify Ownership'}
         </button>
+        
+        <div className="mt-4 text-center">
+          <p className="text-sm text-gray-600 mb-2">Using Ledger hardware wallet?</p>
+          <button
+            onClick={handleSignDummyTransaction}
+            disabled={signingMessage || signingTransaction || verifying}
+            className={`w-full px-4 py-3 rounded text-white font-semibold transition duration-200 cursor-pointer ${
+              (signingMessage || signingTransaction || verifying)
+                ? 'bg-gray-400 cursor-not-allowed'
+                : 'bg-blue-600 hover:bg-blue-700'
+            }`}
+          >
+            {signingTransaction ? 'Waiting for Signature...' : verifying ? 'Processing...' : 'Sign Transaction Instead (for Ledger)'}
+          </button>
+          <p className="text-xs text-gray-500 mt-1">
+            This will sign a 0 SOL transaction as an alternative verification method
+          </p>
+        </div>
       </div>
     );
   };
@@ -716,9 +790,9 @@ export default function VerifyContent() {
 
               <SignMessageButton />
 
-              {signingMessage && (
+              {(signingMessage || signingTransaction) && (
                 <div className="text-center mt-4 text-gray-600">
-                  <p>Please check your wallet to sign the message...</p>
+                  <p>Please check your wallet to {signingTransaction ? 'sign the transaction' : 'sign the message'}...</p>
                 </div>
               )}
 
