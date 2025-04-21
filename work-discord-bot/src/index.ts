@@ -270,7 +270,7 @@ async function handleCommandInteraction(interaction: CommandInteraction) {
     );
 
     await interaction.reply({
-      content: `**You're about to tip @${displayUsername} with ${amount} USDC**\nClick the button below to complete the transaction on our secure website:`,
+      content: `**You're about to tip ${displayUsername} with ${amount} USDC**\nClick the button below to complete the transaction on our secure website:`,
       components: [row],
       ephemeral: true,
     });
