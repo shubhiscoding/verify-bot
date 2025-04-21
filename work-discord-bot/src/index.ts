@@ -990,8 +990,11 @@ async function handleTipCommand(interaction: CommandInteraction) {
     return;
   }
 
-  const receiverUsernameEncoded = encodeURIComponent(mentionedUser.username);
-  const tipLink = `${CLIENT_URL}/tip?receiver_user_id=${mentionedUser.id}&receiver_username=${receiverUsernameEncoded}&amount=${amount}&guildId=${guildId}&sender_user_id=${interaction.user.id}`;
+  
+  const receiverUsername = mentionedUser.globalName || mentionedUser.username; 
+  const displayUsername = mentionedUser.globalName ? `@${mentionedUser.globalName}` : mentionedUser.username;
+  const encodedReceiverUsername = encodeURIComponent(receiverUsername);
+  const tipLink = `${CLIENT_URL}/tip?receiver_user_id=${mentionedUser.id}&receiver_username=${encodedReceiverUsername}&amount=${amount}`;
 
   const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
@@ -1001,7 +1004,7 @@ async function handleTipCommand(interaction: CommandInteraction) {
   );
 
   await interaction.reply({
-    content: `You are about to initiate a tip of **${amount}** units to ${mentionedUser.tag}.\nClick the button below to proceed on the web interface:`,
+    content: `**You're about to tip @${displayUsername} with ${amount} USDC**\nClick the button below to complete the transaction on our secure website:`,
     components: [row],
     ephemeral: true,
   });

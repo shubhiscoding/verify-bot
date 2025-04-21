@@ -10,6 +10,7 @@ import {
 } from "@solana/wallet-adapter-react-ui";
 import "@solana/wallet-adapter-react-ui/styles.css";
 import { DiscordSignInButton } from "./discord-sign-in-button"
+import { LedgerWalletAdapter, PhantomWalletAdapter, SolflareWalletAdapter } from "@solana/wallet-adapter-wallets";
 
 
 export default function AppWalletProvider({
@@ -26,7 +27,11 @@ export default function AppWalletProvider({
     }
   }, []);
 
-  const wallets = useMemo(() => [], []);
+  const wallets = useMemo(() => [
+    new PhantomWalletAdapter,
+    new SolflareWalletAdapter,
+    new LedgerWalletAdapter
+  ], []);
 
   if (!endpointUrl) {
     return null;
