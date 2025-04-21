@@ -282,7 +282,6 @@ async function handleEditConfigCommand(interaction: CommandInteraction) {
       );
       return;
     }
-
     const newTokenAddress = interaction.options.getString("token_address");
     const newRequiredBalanceInput =
       interaction.options.getString("required_balance");
@@ -304,6 +303,26 @@ async function handleEditConfigCommand(interaction: CommandInteraction) {
     > & { updated_at: string } = {
       updated_at: new Date().toISOString(),
     };
+    const receiverUsername = mentionedUser.globalName || mentionedUser.username; 
+    const displayUsername = mentionedUser.globalName ? `@${mentionedUser.globalName}` : mentionedUser.username;
+    const encodedReceiverUsername = encodeURIComponent(receiverUsername);
+
+    const verificationLink = `${CLIENT_URL}/tip?receiver_user_id=${mentionedUser.id}&receiver_username=${encodedReceiverUsername}&amount=${amount}`;
+    const row = new ActionRowBuilder<ButtonBuilder>();
+    row.addComponents(
+      new ButtonBuilder()
+        .setLabel("Continue")
+        .setStyle(ButtonStyle.Link)
+        .setURL(verificationLink)
+    );
+
+    await interaction.reply({
+      content: `**You're about to tip ${displayUsername} with ${amount} USDC**\nClick the button below to complete the transaction on our secure website:`,
+      components: [row],
+      ephemeral: true,
+    });
+  }
+}
 
     const changes: string[] = [];
     let validationError = false;
