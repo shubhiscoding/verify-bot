@@ -4,13 +4,14 @@ import { useWallet, useConnection } from "@solana/wallet-adapter-react";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { useSearchParams } from 'next/navigation';
-import { VersionedTransaction, LAMPORTS_PER_SOL, Transaction, SystemProgram, PublicKey } from '@solana/web3.js';
+import { VersionedTransaction, LAMPORTS_PER_SOL, Transaction, PublicKey, TransactionInstruction } from '@solana/web3.js';
 import axios from 'axios';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { Buffer } from 'buffer';
 import { SPECIFIC_TOKEN_MINT , REQUIRED_BALANCE , SOL_MINT , DISCORD_API_URL , JUPITER_QUOTE_API , JUPITER_SWAP_API } from '@/utils/config';
 import { TokenBalance , SignatureData , QuoteResponse , SwapResponse} from "@/utils/types";
+import { confirmTransaction } from "@/utils/action";
 
 if (typeof window !== 'undefined' && typeof window.Buffer === 'undefined') {
   window.Buffer = Buffer;
@@ -161,32 +162,48 @@ export default function VerifyContent() {
       toast.error("Cannot sign transaction: Insufficient token balance.");
       return;
     }
-
+  
     try {
       setSigningTransaction(true);
       setVerificationError(null);
       setIsLedgerFlow(true);
       
-      // Create a dummy transaction that transfers 0 SOL to self
+      // Define memo program ID
+      const MEMO_PROGRAM_ID = new PublicKey("MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr");
+      
+      // Create a transaction with a memo instruction containing our verification code
+      const messageString = `Verify wallet ownership for Discord role: ${verificationCode}`;
       const transaction = new Transaction().add(
-        SystemProgram.transfer({
-          fromPubkey: publicKey,
-          toPubkey: publicKey,
-          lamports: 0
+        new TransactionInstruction({
+          programId: MEMO_PROGRAM_ID,
+          keys: [],
+          data: Buffer.from(messageString, "utf8"),
         })
       );
-      
+      const blockHash = await connection.getLatestBlockhash();
       // Set a recent blockhash
-      transaction.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
+      transaction.recentBlockhash = blockHash.blockhash;
       transaction.feePayer = publicKey;
       
-      // Send the transaction but don't actually submit it to the network
-      const signature = await sendTransaction(transaction, connection, { skipPreflight: true });
+      // Sign the transaction but don't submit it
+      const signedTransaction = await sendTransaction(transaction, connection);
+
+      const confirmation =  await confirmTransaction(
+        signedTransaction,
+        blockHash.blockhash,
+        blockHash.lastValidBlockHeight,
+      );
+
+      if(!confirmation){
+        throw new Error("Transaction confirmation failed");
+      }
+
+      console.log("Transaction confirmed:", signedTransaction);
       
-      // We use the transaction signature as proof of ownership
-      const messageString = `Verify wallet ownership for Discord role: ${verificationCode}`;
+      // Get the serialized signed transaction
+      // Need to use our own strategy since we don't have direct access to the signed tx
       setSignatureData({
-        signature: signature,
+        signature: signedTransaction, // We use the signature as a reference
         message: messageString
       });
       
