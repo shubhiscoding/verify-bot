@@ -995,21 +995,20 @@ async function handleTipCommand(interaction: CommandInteraction) {
     ? `@${mentionedUser.globalName}`
     : mentionedUser.username;
   const encodedReceiverUsername = encodeURIComponent(receiverUsername);
-  // Assume USDC tip or generic units if not specified
   const tipLink = `${CLIENT_URL}/tip?receiver_user_id=${mentionedUser.id}&receiver_username=${encodedReceiverUsername}&amount=${amount}`;
 
   const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
-      .setLabel(`Continue Tip (${amount} Units)`)
+      .setLabel(`Continue Tip (${amount} USDC)`)
       .setStyle(ButtonStyle.Link)
       .setURL(tipLink)
   );
 
   await interaction.reply({
-    content: `**You're about to tip ${displayUsername} with ${amount} Units**\nClick the button below to complete the transaction on our secure website:`,
+    content: `**You're about to tip ${displayUsername} with ${amount} USDC**\nClick the button below to complete the transaction on our secure website:`,
     components: [row],
     ephemeral: true,
-    allowedMentions: { users: [] }, // Prevent pinging the user
+    allowedMentions: { users: [] },
   });
 }
 
