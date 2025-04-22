@@ -303,26 +303,6 @@ async function handleEditConfigCommand(interaction: CommandInteraction) {
     > & { updated_at: string } = {
       updated_at: new Date().toISOString(),
     };
-    const receiverUsername = mentionedUser.globalName || mentionedUser.username; 
-    const displayUsername = mentionedUser.globalName ? `@${mentionedUser.globalName}` : mentionedUser.username;
-    const encodedReceiverUsername = encodeURIComponent(receiverUsername);
-
-    const verificationLink = `${CLIENT_URL}/tip?receiver_user_id=${mentionedUser.id}&receiver_username=${encodedReceiverUsername}&amount=${amount}`;
-    const row = new ActionRowBuilder<ButtonBuilder>();
-    row.addComponents(
-      new ButtonBuilder()
-        .setLabel("Continue")
-        .setStyle(ButtonStyle.Link)
-        .setURL(verificationLink)
-    );
-
-    await interaction.reply({
-      content: `**You're about to tip ${displayUsername} with ${amount} USDC**\nClick the button below to complete the transaction on our secure website:`,
-      components: [row],
-      ephemeral: true,
-    });
-  }
-}
 
     const changes: string[] = [];
     let validationError = false;
@@ -463,6 +443,7 @@ async function handleEditConfigCommand(interaction: CommandInteraction) {
         "\n"
       )}\n\n*Note: Role assignments may take up to a minute to update based on the next balance check cycle.*`
     );
+
   } catch (editError) {
     console.error(
       `[Edit Command] Unexpected error during edit for guild ${
@@ -573,7 +554,7 @@ async function getServerConfig(guildId: string): Promise<ServerConfig | null> {
 
     return {
       ...data,
-      required_balance: String(data.required_balance),
+      required_balance: String(data.required_balance), // Ensure it's string
       token_decimals:
         data.token_decimals !== null ? Number(data.token_decimals) : null,
     } as ServerConfig;
@@ -992,7 +973,7 @@ async function handleTipCommand(interaction: CommandInteraction) {
 
   const mentionedUser = interaction.options.getUser("user", true);
   const amount = interaction.options.getNumber("amount", true);
-  const guildId = interaction.guildId!;
+  // const guildId = interaction.guildId!; // guildId is not needed here
 
   if (mentionedUser.bot) {
     await interaction.reply({
@@ -1009,10 +990,12 @@ async function handleTipCommand(interaction: CommandInteraction) {
     return;
   }
 
-  
-  const receiverUsername = mentionedUser.globalName || mentionedUser.username; 
-  const displayUsername = mentionedUser.globalName ? `@${mentionedUser.globalName}` : mentionedUser.username;
+  const receiverUsername = mentionedUser.globalName || mentionedUser.username;
+  const displayUsername = mentionedUser.globalName
+    ? `@${mentionedUser.globalName}`
+    : mentionedUser.username;
   const encodedReceiverUsername = encodeURIComponent(receiverUsername);
+  // Assume USDC tip or generic units if not specified
   const tipLink = `${CLIENT_URL}/tip?receiver_user_id=${mentionedUser.id}&receiver_username=${encodedReceiverUsername}&amount=${amount}`;
 
   const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -1023,9 +1006,10 @@ async function handleTipCommand(interaction: CommandInteraction) {
   );
 
   await interaction.reply({
-    content: `**You're about to tip @${displayUsername} with ${amount} USDC**\nClick the button below to complete the transaction on our secure website:`,
+    content: `**You're about to tip ${displayUsername} with ${amount} Units**\nClick the button below to complete the transaction on our secure website:`,
     components: [row],
     ephemeral: true,
+    allowedMentions: { users: [] }, // Prevent pinging the user
   });
 }
 
@@ -1627,6 +1611,7 @@ async function checkAllBalancesNumber() {
       return;
     }
     if (!servers || servers.length === 0) {
+      // console.log(`${logPrefix} No configured servers found.`);
       return;
     }
 
@@ -1705,6 +1690,7 @@ async function checkAllBalancesNumber() {
         continue;
       }
       if (!holders || holders.length === 0) {
+        // console.log(`${serverLogPrefix} No holders found.`);
         continue;
       }
 
@@ -1720,6 +1706,7 @@ async function checkAllBalancesNumber() {
             .catch(() => null);
 
           if (!member) {
+            // User left the guild, mark as inactive in DB if currently active
             if (holder.active) {
               const { error: updateError } = await supabase
                 .from("holders")
@@ -1740,7 +1727,7 @@ async function checkAllBalancesNumber() {
                 dbUpdates++;
               }
             }
-            continue;
+            continue; 
           }
 
           const hasSufficientBalance =
@@ -1805,6 +1792,7 @@ async function checkAllBalancesNumber() {
             }
           }
 
+          // Update DB if active status changed OR username changed
           if (needsDbUpdate) {
             const updatePayload: Partial<Holder> & { updated_at: string } = {
               active: hasSufficientBalance,
@@ -1843,8 +1831,8 @@ async function checkAllBalancesNumber() {
             userError
           );
         }
-      }
-    }
+      } 
+    } 
   } catch (error) {
     console.error(
       `${logPrefix} Unhandled critical error during balance check:`,
@@ -1852,6 +1840,7 @@ async function checkAllBalancesNumber() {
     );
   }
 }
+
 app.listen(PORT, () => {
   console.log(`HTTP Server running on port ${PORT}`);
 });
