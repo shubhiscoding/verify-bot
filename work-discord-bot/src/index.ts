@@ -18,14 +18,14 @@ import {
   ActivityType,
   Role,
   Guild,
-} from "discord.js";
-import express, { Request, Response } from "express";
-import cors from "cors";
-import crypto from "crypto";
-import dotenv from "dotenv";
-import { createClient, SupabaseClient } from "@supabase/supabase-js";
-import { Connection, PublicKey } from "@solana/web3.js";
-import * as nacl from "tweetnacl";
+} from 'discord.js';
+import express, { Request, Response } from 'express';
+import cors from 'cors';
+import crypto from 'crypto';
+import dotenv from 'dotenv';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { Connection, PublicKey, TransactionMessage } from '@solana/web3.js';
+import * as nacl from 'tweetnacl';
 
 dotenv.config();
 
@@ -212,6 +212,48 @@ const rest = new REST({ version: "10" }).setToken(process.env.DISCORD_TOKEN!);
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+const MEMO_PROGRAM_ID = new PublicKey("MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr");
+
+async function validateAuthTx(serializedTx: string, nonce: string, walletAddress: string, rpcUrl: string): Promise<boolean> {
+  try {
+    const connection = new Connection(rpcUrl, "confirmed");
+    const tx = await connection.getTransaction(serializedTx, {
+      commitment: 'finalized'
+    });
+
+    if (!tx) {
+      throw new Error("Transaction not found or not yet confirmed.");
+    }
+    if(!tx || !tx.transaction || !tx.transaction.message) {
+      console.log('Transaction not found');
+      return false;
+    }
+    const msg = TransactionMessage.decompile(tx.transaction.message);
+    const inx = msg.instructions.filter(
+      (inx) => inx.programId.equals(MEMO_PROGRAM_ID)
+    )[0];
+    if(inx === undefined) {
+      console.log('No memo instruction found');
+      return false;
+    }
+    if (!inx.programId.equals(MEMO_PROGRAM_ID)) {
+      console.log('Transaction not using memo program');
+      return false;
+    }
+    
+    // Verify the nonce in the memo data
+    if (inx.data.toString() !== nonce) {
+      console.log('Transaction memo data does not match expected nonce', inx.data.toString(), nonce);
+      return false;
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Error validating auth transaction:', error);
+    return false;
+  }
+}
 
 function verifySignature(
   message: string,
@@ -536,6 +578,7 @@ async function checkAnyWalletHasSufficientBalanceNumber(
   }
   return false;
 }
+
 
 async function getServerConfig(guildId: string): Promise<ServerConfig | null> {
   try {
@@ -1154,7 +1197,7 @@ app.get("/api/verification-context", async (req: Request, res: Response) => {
 });
 
 app.post("/api/verify-wallet", async (req: Request, res: Response) => {
-  const { verificationCode, walletAddress, signature, message } = req.body;
+  const { verificationCode, walletAddress, signature, message, isLedgerFlow } = req.body;
   const logPrefix = `[API Verify ${verificationCode?.substring(0, 6)}...]`;
   console.log(
     `${logPrefix} Request received for wallet ${walletAddress?.substring(
@@ -1228,8 +1271,16 @@ app.post("/api/verify-wallet", async (req: Request, res: Response) => {
     console.warn(
       `${logPrefix} [Precision Warning] Required balance ${requiredBalanceNum} for guild ${guildId} exceeds safe limits.`
     );
+  
+  let isSignatureValid = false;
 
-  const isSignatureValid = verifySignature(message, signature, walletAddress);
+  if (isLedgerFlow) {
+    const expectedNonce = `Verify wallet ownership for Discord role: ${verificationCode}`;
+    isSignatureValid = await validateAuthTx(signature, expectedNonce, walletAddress, rpc_url);
+  } else {
+    isSignatureValid = verifySignature(message, signature, walletAddress);
+  }
+
   if (!isSignatureValid) {
     console.log(
       `${logPrefix} Signature verification failed for ${walletAddress}`
