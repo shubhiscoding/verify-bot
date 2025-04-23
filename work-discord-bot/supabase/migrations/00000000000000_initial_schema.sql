@@ -9,8 +9,17 @@ CREATE TABLE IF NOT EXISTS holders (
 );
 
 -- Add indexes for better query performance
-CREATE INDEX IF NOT EXISTS idx_holders_discord_user_id ON holders(discord_user_id);
-CREATE INDEX IF NOT EXISTS idx_holders_active ON holders(active);
+DO $$ BEGIN
+  -- Add index for discord_user_id lookups
+  IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'holders_discord_id_idx') THEN
+    CREATE INDEX holders_discord_id_idx ON holders(discord_user_id);
+  END IF;
+
+  -- Add index for active status checks
+  IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'holders_active_idx') THEN
+    CREATE INDEX holders_active_idx ON holders(active);
+  END IF;
+END $$;
 
 -- Add audit columns
 ALTER TABLE holders 
