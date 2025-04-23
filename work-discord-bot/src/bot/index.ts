@@ -1,9 +1,11 @@
 import { Events, ActivityType, Routes } from 'discord.js';
 import { client, rest, commands, DISCORD_TOKEN } from '../config';
-import { handleCommandInteraction, handleButtonInteraction } from './commands';
+import { handleCommandInteraction } from './interactions/handleCommandInteraction';
+import { handleButtonInteraction } from './interactions/handleButtonInteraction';
 import { checkAllBalances } from './balance';
 
 export async function setupBot() {
+  // Set up Client Ready event handler
   client.once(Events.ClientReady, async (c) => {
     console.log(`Ready! Logged in as ${c.user.tag}`);
     console.log(
@@ -25,6 +27,7 @@ export async function setupBot() {
       console.log(
         `Successfully reloaded ${data.length} application (/) commands.`
       );
+      
       setInterval(checkAllBalances, 60 * 1000);
       checkAllBalances();
     } catch (error) {
@@ -59,8 +62,12 @@ export async function setupBot() {
     }
   });
 
+  // Login and return the promise
   return client.login(DISCORD_TOKEN).catch((err) => {
     console.error("FATAL: Failed to login to Discord:", err);
     process.exit(1);
   });
 }
+
+export * from './commands';
+export * from './interactions';
