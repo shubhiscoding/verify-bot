@@ -146,7 +146,7 @@ export function TipContent({ receiverVault }: TipContentProps) {
           vaultId: depositRes.vaultId,
           receiverId: receiverDiscordId,
           txId: txHash,
-          tokenAccount
+          token_account: tokenAccount,
         });
         tx = txHash;
       } else {
@@ -174,7 +174,7 @@ export function TipContent({ receiverVault }: TipContentProps) {
           vaultId: receiverVault,
           receiverId: receiverDiscordId,
           txId: signature,
-          tokenAccount
+          token_account: tokenAccount,
         });
       }
 

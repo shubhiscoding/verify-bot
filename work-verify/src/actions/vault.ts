@@ -65,11 +65,11 @@ export const getAmountByUser = async (userDiscordId: string) => {
   const supabase = await makeSupabase();
   const { data } = await supabase
     .from("vaults")
-    .select("tokenAccount, amount, vault_id, decimals")
+    .select("token_account, amount, vault_id, decimals")
     .eq("discord_user_id", userDiscordId)
     .maybeSingle();
 
-  if(!data || !data.tokenAccount){
+  if(!data || !data.token_account){
     throw new Error("No vault found for this user");
   }
 
@@ -82,7 +82,7 @@ export const getAmountByUser = async (userDiscordId: string) => {
     throw new Error("No connection to Solana");
   }
 
-  const balance = await connection.getTokenAccountBalance(new PublicKey(data.tokenAccount));
+  const balance = await connection.getTokenAccountBalance(new PublicKey(data.token_account));
 
   const amnt = data.amount/(10**data.decimals);
 
@@ -117,13 +117,13 @@ export const depositInDatabase = async ({
   vaultId,
   receiverId,
   txId,
-  tokenAccount,
+  token_account,
 }: {
   amount: number;
   vaultId: string;
   receiverId: string;
   txId?: string;
-  tokenAccount: string;
+  token_account: string;
 }) => {
   const supabase = await makeSupabase();
   const session = await auth();
@@ -147,7 +147,7 @@ export const depositInDatabase = async ({
       vault_id: vaultId,
       amount: 0,
       decimals: dbDecimals,
-      tokenAccount,
+      token_account,
     });
 
     if (insertError)
