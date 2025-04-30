@@ -23,16 +23,19 @@ export function WithdrawFromVault({ amount, vaultId }: WithdrawFromVaultProps) {
         toast.error("Connect your wallet first!");
         return;
       }
-
       const withdrawRes = await withdraw({
         payer: publicKey.toString(),
-        network: "mainnet",
+        network: process.env.NEXT_PUBLIC_NETWORK === "devnet"? "devnet" : "mainnet",
         strategy: "blockhash",
         vaultId,
         amount,
         token: {
           amount,
           mintAddress: process.env.NEXT_PUBLIC_USDC_MINT_ADDRESS!,
+          decimals: process.env.NEXT_PUBLIC_TOKEN_DECIMALS ? parseInt(process.env.NEXT_PUBLIC_TOKEN_DECIMALS): undefined,
+          symbol: process.env.NEXT_PUBLIC_TOKEN_SYBMOL,
+          name: process.env.NEXT_PUBLIC_TOKEN_NAME,
+          logoUri: process.env.NEXT_PUBLIC_LOGO_URI,
         },
       });
 

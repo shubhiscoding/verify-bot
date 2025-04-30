@@ -1,14 +1,15 @@
 "use client";
 
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
+import { createTransferInstruction, getAssociatedTokenAddress } from "@solana/spl-token";
 
 import { formatWalletAddress } from "@//utils/wallet";
-import { Transaction } from "@solana/web3.js";
+import { PublicKey, Transaction } from "@solana/web3.js";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { useSearchParams } from "next/navigation";
 import { execute } from "@//actions/execute";
-import { deposit, depositInDatabase } from "@//actions/vault";
+import { deposit, depositInDatabase, getVaultById } from "@//actions/vault";
 import { toast } from "sonner";
 import { useSession } from "next-auth/react";
 import {
@@ -37,7 +38,7 @@ export function TipContent({ receiverVault }: TipContentProps) {
   const isFetchingRef = useRef(false);
 
   const { connection } = useConnection();
-  const { publicKey, connected, signTransaction } = useWallet();
+  const { publicKey, connected, signTransaction, sendTransaction } = useWallet();
 
   const amount = Number(searchParams.get("amount") || 0);
   const receiverUsername = searchParams.get("receiver_username");
@@ -103,42 +104,86 @@ export function TipContent({ receiverVault }: TipContentProps) {
 
     try {
       setLoading(true);
-      const depositRes = await deposit({
-        payer: publicKey.toString(),
-        vaultId: receiverVault || undefined,
-        strategy: "blockhash",
-        network: "mainnet",
-        amount,
-        token: {
-          mintAddress,
+      let tx;
+
+      if(!receiverVault) {
+        const depositRes = await deposit({
+          payer: publicKey.toString(),
+          vaultId: receiverVault || undefined,
+          strategy: "blockhash",
+          network: process.env.NEXT_PUBLIC_NETWORK === "devnet"? "devnet" : "mainnet",
           amount,
-        },
-      });
+          token: {
+            mintAddress,
+            amount,
+            decimals: process.env.NEXT_PUBLIC_TOKEN_DECIMALS ? parseInt(process.env.NEXT_PUBLIC_TOKEN_DECIMALS): undefined,
+            symbol: process.env.NEXT_PUBLIC_TOKEN_SYBMOL,
+            name: process.env.NEXT_PUBLIC_TOKEN_NAME,
+            logoUri: process.env.NEXT_PUBLIC_LOGO_URI,
+          },
+        });
+  
+        const transaction = Transaction.from(
+          Buffer.from(depositRes.serializedTransaction, "base64")
+        );
 
-      const transaction = Transaction.from(
-        Buffer.from(depositRes.serializedTransaction, "base64")
-      );
-      const signedTransaction = await signTransaction(transaction);
+        const signedTransaction = await signTransaction(transaction);
+  
+        const { txHash } = await execute({
+          vaultId: depositRes.vaultId,
+          transactionId: depositRes.transactionId,
+          signedTransaction: signedTransaction.serialize().toString("base64"),
+        });
 
-      const { txHash } = await execute({
-        vaultId: depositRes.vaultId,
-        transactionId: depositRes.transactionId,
-        signedTransaction: signedTransaction.serialize().toString("base64"),
-      });
+        const userVault = await getVaultById(depositRes.vaultId);
+        if(!userVault) {
+          throw new Error("Vault not found");
+        };
+        const tokenAccount = userVault.tokenAccount;
 
-      await depositInDatabase({
-        amount,
-        vaultId: depositRes.vaultId,
-        receiverId: receiverDiscordId,
-        txId: txHash,
-      });
+        await depositInDatabase({
+          amount,
+          vaultId: depositRes.vaultId,
+          receiverId: receiverDiscordId,
+          txId: txHash,
+          tokenAccount
+        });
+        tx = txHash;
+      } else {
+        const userVault = await getVaultById(receiverVault);
+        if (!userVault) {
+          toast.error("Receiver vault not found.");
+          return;
+        }
+        const tokenAccount = userVault.tokenAccount;
+        const senderTokenAccount = await getAssociatedTokenAddress(
+          new PublicKey(mintAddress),
+          publicKey
+        );
+        const transferIx = createTransferInstruction(
+          senderTokenAccount,
+          new PublicKey(tokenAccount),
+          publicKey,
+          amount * 10 ** 9,
+        );
+        const tnx = new Transaction().add(transferIx);
+        const signature = await sendTransaction(tnx, connection);
+
+        await depositInDatabase({
+          amount,
+          vaultId: receiverVault,
+          receiverId: receiverDiscordId,
+          txId: signature,
+          tokenAccount
+        });
+      }
 
       toast(
         <div className="flex flex-col gap-1">
           <span className="text-lg font-semibold">Transaction Confirmed</span>
           <span>Successfully tipped @{receiverUsername}</span>
           <a
-            href={`https://solscan.io/tx/${txHash}`}
+            href={`https://solscan.io/tx/${tx}`}
             target="_blank"
             className="underline"
             rel="noreferrer"

@@ -1,4 +1,4 @@
-import { getVaultByUser } from "@//actions/vault";
+import { getAmountByUser, getVaultByUser } from "@//actions/vault";
 import { auth } from "@//auth";
 import { WithdrawContent } from "./components/withdraw-content";
 
@@ -6,6 +6,7 @@ export default async function VaultPage() {
   const session = await auth();
   const userDiscordId = session?.user?.id || "";
   const vault = await getVaultByUser(userDiscordId);
+  const amount = await getAmountByUser(userDiscordId);
 
   if (!session) {
     return (
@@ -17,7 +18,7 @@ export default async function VaultPage() {
     );
   }
 
-  if (!vault) {
+  if (!vault || amount === null) {
     return (
       <main className="flex min-h-screen flex-col items-center justify-center p-4 md:p-24">
         <h1 className="text-2xl font-bold mb-4">
@@ -32,7 +33,7 @@ export default async function VaultPage() {
       <WithdrawContent
         assetSymbol={vault.asset.symbol}
         vaultId={vault.id}
-        withdrawAmount={vault.asset.amountParsed}
+        withdrawAmount={amount || 0}
       />
     </main>
   );

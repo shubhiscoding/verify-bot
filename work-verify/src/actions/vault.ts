@@ -5,6 +5,8 @@ import { makeSupabase } from "@//lib/supabase";
 import { makeXcrow } from "@//lib/xcrow";
 import { DepositInput, DepositOutput, WithdrawInput } from "@xcrowdev/node";
 import { revalidatePath } from "next/cache";
+import { getVaultDetailsResponsePayload } from "@xcrowdev/node/dist/utils/build-payloads";
+import { clusterApiUrl, Connection, PublicKey } from "@solana/web3.js";
 
 export const getVaultByUser = async (userDiscordId: string) => {
   try {
@@ -39,6 +41,65 @@ export const getVaultByUser = async (userDiscordId: string) => {
   }
 };
 
+export const getVaultById = async (vaultId: string) => {
+  try {
+    const res = await fetch(`https://api2.xcrow.dev/v1/vault/${vaultId}`, {
+        method: "GET",
+        headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': process.env.XCROW_API_KEY as string,
+        'x-application-id': process.env.XCROW_APPLICATION_ID as string,
+      }
+    });
+    const data = await res.json();
+
+    const response = getVaultDetailsResponsePayload({data});
+    return response;
+  } catch (error) {
+    console.log(error);
+    return undefined
+  }
+}
+
+export const getAmountByUser = async (userDiscordId: string) => {
+  const supabase = await makeSupabase();
+  const { data } = await supabase
+    .from("vaults")
+    .select("tokenAccount, amount, vault_id, decimals")
+    .eq("discord_user_id", userDiscordId)
+    .maybeSingle();
+
+  if(!data || !data.tokenAccount){
+    throw new Error("No vault found for this user");
+  }
+
+  const connection = new Connection(
+    process.env.SOLANA_RPC_URL 
+    || clusterApiUrl(process.env.NEXT_PUBLIC_NETWORK === "devnet"? "devnet" : "mainnet-beta")
+  );
+
+  if(!connection){
+    throw new Error("No connection to Solana");
+  }
+
+  const balance = await connection.getTokenAccountBalance(new PublicKey(data.tokenAccount));
+
+  const amnt = data.amount/(10**data.decimals);
+
+  if(balance.value.uiAmount !=null && amnt != balance.value.uiAmount){
+    const newAmount = balance.value.uiAmount * (10**data.decimals);
+    const { error } = await supabase
+      .from("vaults")
+      .update({ amount: newAmount })
+      .eq("discord_user_id", userDiscordId)
+      .maybeSingle();
+
+    if (error) throw new Error(`Error on vault update: ${error.message}`);
+  }
+
+  return balance.value.uiAmountString ? parseFloat(balance.value.uiAmountString) : undefined;
+}
+
 export const deposit = async (
   params: DepositInput & { amount: number }
 ): Promise<DepositOutput> => {
@@ -56,11 +117,13 @@ export const depositInDatabase = async ({
   vaultId,
   receiverId,
   txId,
+  tokenAccount,
 }: {
   amount: number;
   vaultId: string;
   receiverId: string;
   txId?: string;
+  tokenAccount: string;
 }) => {
   const supabase = await makeSupabase();
   const session = await auth();
@@ -84,6 +147,7 @@ export const depositInDatabase = async ({
       vault_id: vaultId,
       amount: 0,
       decimals: dbDecimals,
+      tokenAccount,
     });
 
     if (insertError)
